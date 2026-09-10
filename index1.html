@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Poppins:wght@100..900&family=Fira+Code:wght@300..700&family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Georgia:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
+    <style type="text/tailwindcss">
+        @import "tailwindcss";
+      @theme inline {
+        --color-background: var(--background);
+        --color-foreground: var(--foreground);
+        --color-primary: var(--primary);
+        --color-primary-foreground: var(--primary-foreground);
+        --color-secondary: var(--secondary);
+        --color-secondary-foreground: var(--secondary-foreground);
+        --color-tertiary: var(--tertiary);
+        --color-muted: var(--muted);
+        --color-muted-foreground: var(--muted-foreground);
+        --color-accent: var(--accent);
+        --color-destructive: var(--destructive);
+        --color-card: var(--card);
+        --color-card-foreground: var(--card-foreground);
+        --color-border: var(--border);
+        --color-input: var(--input);
+        --color-ring: var(--ring);
+        --radius-sm: calc(var(--radius) - 4px);
+        --radius-md: calc(var(--radius) - 2px);
+        --radius-lg: var(--radius);
+        --font-family-sans: var(--font-sans);
+        --font-family-heading: var(--font-heading);
+        --font-family-mono: var(--font-mono);
+      }
+      :root { --background: #fffdfb;
+        --foreground: #2d2830;
+        --primary: #f65d78;
+        --primary-foreground: #ffffff;
+        --secondary: #fff0ed;
+        --secondary-foreground: #2d2830;
+        --tertiary: #24b9b1;
+        --muted: #f8f3ef;
+        --muted-foreground: #726b73;
+        --accent: #fff3bd;
+        --accent-foreground: #2d2830;
+        --card: #ffffff;
+        --card-foreground: #2d2830;
+        --destructive: #e25562;
+        --border: #f0e5e1;
+        --input: #e8dcda;
+        --ring: #f65d78;
+        --radius: 0.75rem;
+        --font-sans: Nunito, Arial, sans-serif;
+        --font-heading: Georgia, serif;
+        --font-mono: JetBrains Mono, monospace;
+        --shadow-offset-x: 0;
+        --shadow-offset-y: 10;
+        --shadow-blur: 30;
+        --shadow-spread: -8;
+        --shadow-color: rgba(15, 23, 42, 0.12); }
+    </style>
+    <style>
+        .brand-gradient {
+            background-image: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+
+        .shadow-theme {
+            box-shadow:
+                calc(var(--shadow-offset-x, 0) * 1px) calc(var(--shadow-offset-y, 10) * 1px) calc(var(--shadow-blur, 30) * 1px) calc(var(--shadow-spread, -8) * 1px) var(--shadow-color, rgba(15, 23, 42, 0.12));
+        }
+    </style>
+</head>
+
+<body>
+    <div class="min-h-screen w-full bg-background flex flex-col relative">
+        <div class="bg-secondary border-b border-border">
+            <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs text-muted-foreground">
+                <span class="flex items-center gap-2"><iconify-icon icon="lucide:truck"
+                        class="text-primary"></iconify-icon>Free Shipping on orders over ৳1500</span><span
+                    class="flex items-center gap-2"><iconify-icon icon="lucide:shopping-bag"
+                        class="text-primary"></iconify-icon>Cash on Delivery</span><span
+                    class="flex items-center gap-2"><iconify-icon icon="lucide:refresh-cw"
+                        class="text-primary"></iconify-icon>Easy Return</span><span
+                    class="flex items-center gap-2"><iconify-icon icon="lucide:phone"
+                        class="text-primary"></iconify-icon>Need Help? +880 1234 567890</span></div>
+        </div>
+        <header class="bg-card border-b border-border">
+            <div class="mx-auto flex max-w-7xl items-center gap-8 px-6 py-4">
+                <div class="flex shrink-0 items-center gap-2">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+                        <iconify-icon icon="lucide:heart" class="text-2xl"></iconify-icon></div>
+                    <div>
+                        <p class="font-heading text-xl font-bold leading-none">Kids &amp; Mom</p>
+                        <p class="mt-1 text-[10px] text-muted-foreground">For the love of little ones</p>
+                    </div>
+                </div>
+                <div
+                    class="flex min-h-11 flex-1 items-center rounded-full border border-input bg-background px-4 text-sm text-muted-foreground">
+                    <span class="flex-1">Search for products, categories...</span><span
+                        class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"><iconify-icon
+                            icon="lucide:search"></iconify-icon></span></div>
+                <div class="flex items-center gap-5 text-xs"><span
+                        class="flex flex-col items-center gap-1"><iconify-icon icon="lucide:heart"
+                            class="text-lg"></iconify-icon>Wishlist</span><span
+                        class="flex flex-col items-center gap-1"><iconify-icon icon="lucide:user"
+                            class="text-lg"></iconify-icon>Account</span><span
+                        class="relative flex flex-col items-center gap-1"><b
+                            class="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground">1</b><iconify-icon
+                            icon="lucide:shopping-cart" class="text-lg"></iconify-icon>Cart</span></div>
+            </div>
+            <nav class="mx-auto flex max-w-7xl items-center justify-center gap-9 px-6 py-3 text-xs font-bold">
+                <span>New</span><span>Baby</span><span>Girls</span><span>Boys</span><span>Mom</span><span>Maternity</span><span>Toys</span><span>Matching
+                    Family</span><span>Brands</span><span class="text-primary">Sale <b
+                        class="ml-1 rounded-full bg-primary px-2 py-1 text-primary-foreground">Hot</b></span></nav>
+        </header>
+        <main class="mx-auto w-full max-w-7xl space-y-5 px-6 py-5">
+            <section class="relative overflow-hidden rounded-3xl bg-secondary"><img
+                    src="https://uxmagic.blob.core.windows.net/public/agent-images/kids-hero-1785248198038-9kzhyvlvwf.png"
+                    class="h-[360px] w-full object-cover object-right" />
+                <div class="absolute inset-y-0 left-0 flex w-[50%] items-center">
+                    <div class="ml-14 max-w-sm"><span class="rounded-full bg-accent px-3 py-1 text-[10px] font-bold">NEW
+                            ARRIVAL</span>
+                        <h1 class="mt-4 text-5xl font-heading font-bold leading-[1.05]">Tiny Moments,<br /><span
+                                class="text-primary">Big Smiles</span></h1>
+                        <p class="mt-4 text-sm leading-6 text-muted-foreground">Discover premium quality styles<br />for
+                            your little ones &amp; you.</p><button
+                            class="mt-5 min-h-11 rounded-lg bg-primary px-5 text-xs font-bold text-primary-foreground shadow-md">Shop
+                            Collection <iconify-icon icon="lucide:arrow-right" class="ml-2"></iconify-icon></button>
+                        <div class="mt-6 text-xs font-bold">01 <span class="text-muted-foreground">/ 03</span> <span
+                                class="ml-2 inline-block h-1 w-8 rounded-full bg-tertiary"></span></div>
+                    </div>
+                </div><button
+                    class="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-md"><iconify-icon
+                        icon="lucide:arrow-left"></iconify-icon></button><button
+                    class="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-md"><iconify-icon
+                        icon="lucide:arrow-right"></iconify-icon></button>
+            </section>
+            <section class="grid grid-cols-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div class="flex items-center gap-3 p-5"><span
+                        class="rounded-xl bg-secondary p-3 text-primary"><iconify-icon icon="lucide:truck"
+                            class="text-xl"></iconify-icon></span>
+                    <p class="text-xs font-bold">Free Shipping<br /><span class="font-normal text-muted-foreground">On
+                            orders over ৳1500</span></p>
+                </div>
+                <div class="flex items-center gap-3 p-5"><span
+                        class="rounded-xl bg-accent p-3 text-tertiary"><iconify-icon icon="lucide:shopping-bag"
+                            class="text-xl"></iconify-icon></span>
+                    <p class="text-xs font-bold">Cash on Delivery<br /><span
+                            class="font-normal text-muted-foreground">Pay when you receive</span></p>
+                </div>
+                <div class="flex items-center gap-3 p-5"><span
+                        class="rounded-xl bg-secondary p-3 text-primary"><iconify-icon icon="lucide:refresh-cw"
+                            class="text-xl"></iconify-icon></span>
+                    <p class="text-xs font-bold">Easy Return<br /><span class="font-normal text-muted-foreground">Within
+                            7 days</span></p>
+                </div>
+                <div class="flex items-center gap-3 p-5"><span
+                        class="rounded-xl bg-accent p-3 text-primary"><iconify-icon icon="lucide:award"
+                            class="text-xl"></iconify-icon></span>
+                    <p class="text-xs font-bold">Premium Quality<br /><span
+                            class="font-normal text-muted-foreground">100% original products</span></p>
+                </div>
+                <div class="flex items-center gap-3 p-5"><span
+                        class="rounded-xl bg-secondary p-3 text-tertiary"><iconify-icon icon="lucide:shield-check"
+                            class="text-xl"></iconify-icon></span>
+                    <p class="text-xs font-bold">Secure Payment<br /><span
+                            class="font-normal text-muted-foreground">100% safe &amp; secure</span></p>
+                </div>
+            </section>
+            <section class="rounded-2xl bg-secondary p-5">
+                <div class="grid grid-cols-6 gap-4">
+                    <div class="col-span-1">
+                        <p class="text-lg font-heading font-bold text-primary">FLASH SALE ⚡</p>
+                        <p class="text-xs text-muted-foreground">Hurry up! Limited time offer</p>
+                        <div class="mt-4 grid grid-cols-4 gap-1 text-center text-xs"><b
+                                class="rounded-lg bg-card p-2">02<br /><small>Days</small></b><b
+                                class="rounded-lg bg-card p-2">15<br /><small>Hours</small></b><b
+                                class="rounded-lg bg-card p-2">22<br /><small>Mins</small></b><b
+                                class="rounded-lg bg-card p-2">18<br /><small>Secs</small></b></div><button
+                            class="mt-4 min-h-11 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground">Shop
+                            All Deals <iconify-icon icon="lucide:arrow-right" class="ml-2"></iconify-icon></button>
+                    </div>
+                    <div class="col-span-5 grid grid-cols-4 gap-3">
+                        <div class="rounded-xl bg-card p-2">
+                            <div class="relative h-36 overflow-hidden rounded-lg bg-muted"><b
+                                    class="absolute left-1 top-1 rounded bg-primary px-1.5 py-1 text-[9px] text-primary-foreground">-25%</b><img
+                                    src="https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                    class="h-full w-full object-cover" /></div>
+                            <p class="mt-2 text-[10px]">Floral Cotton Frock</p><b class="text-sm text-primary">৳
+                                1,125</b>
+                        </div>
+                        <div class="rounded-xl bg-card p-2">
+                            <div class="relative h-36 overflow-hidden rounded-lg bg-muted"><b
+                                    class="absolute left-1 top-1 rounded bg-primary px-1.5 py-1 text-[9px] text-primary-foreground">-20%</b><img
+                                    src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                    class="h-full w-full object-cover" /></div>
+                            <p class="mt-2 text-[10px]">Summer Printed Set</p><b class="text-sm text-primary">৳ 960</b>
+                        </div>
+                        <div class="rounded-xl bg-card p-2">
+                            <div class="relative h-36 overflow-hidden rounded-lg bg-muted"><b
+                                    class="absolute left-1 top-1 rounded bg-primary px-1.5 py-1 text-[9px] text-primary-foreground">-30%</b><img
+                                    src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                    class="h-full w-full object-cover" /></div>
+                            <p class="mt-2 text-[10px]">Kids Casual Shoes</p><b class="text-sm text-primary">৳ 1,260</b>
+                        </div>
+                        <div class="rounded-xl bg-card p-2">
+                            <div class="relative h-36 overflow-hidden rounded-lg bg-muted"><b
+                                    class="absolute left-1 top-1 rounded bg-primary px-1.5 py-1 text-[9px] text-primary-foreground">-15%</b><img
+                                    src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                    class="h-full w-full object-cover" /></div>
+                            <p class="mt-2 text-[10px]">Animal Backpack</p><b class="text-sm text-primary">৳ 845</b>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="grid grid-cols-5 overflow-hidden rounded-2xl border border-tertiary bg-card">
+                <div class="flex items-center justify-center bg-tertiary p-5 text-primary-foreground"><iconify-icon
+                        icon="lucide:gift" class="text-5xl"></iconify-icon></div>
+                <div class="col-span-2 p-5">
+                    <p class="text-[10px] font-bold text-tertiary">SPECIAL COUPON</p>
+                    <p class="font-heading text-4xl text-tertiary">Save <span class="text-primary">৳300</span></p>
+                    <p class="text-xs">on your first order</p>
+                </div>
+                <div class="m-4 rounded-xl border border-dashed border-tertiary p-4 text-center">
+                    <p class="text-[10px]">Use Code:</p><b class="text-lg text-tertiary">WELCOME300</b>
+                </div>
+                <div class="p-4 text-center"><button
+                        class="min-h-11 w-full rounded-full bg-tertiary text-xs font-bold text-primary-foreground">Copy
+                        Code</button>
+                    <p class="mt-2 text-[10px]">Valid till 31 Jul, 2025</p>
+                </div>
+            </section>
+            <section class="relative overflow-hidden rounded-2xl"><img
+                    src="https://uxmagic.blob.core.windows.net/public/agent-images/kids-offer-1785248211246-j75qhbna4hi.png"
+                    class="h-52 w-full object-cover" />
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <p class="text-[10px] font-bold tracking-[0.2em]">LIMITED TIME OFFER</p>
+                    <h2 class="mt-2 text-4xl font-heading font-bold text-primary">BUY 2 GET 1 FREE</h2>
+                    <p class="mt-1">On kids &amp; mom fashion</p><button
+                        class="mt-4 min-h-11 rounded-full bg-primary px-6 text-xs font-bold text-primary-foreground">Shop
+                        Now <iconify-icon icon="lucide:arrow-right" class="ml-2"></iconify-icon></button>
+                </div>
+            </section>
+            <section>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-heading font-semibold">Browse Categories <span class="text-primary">♥</span>
+                    </h2><span class="text-[10px]">View All Categories</span>
+                </div>
+                <div class="mt-3 grid grid-cols-8 gap-4 text-center text-xs">
+                    <div><img
+                            src="https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&amp;fit=crop&amp;w=150&amp;q=80"
+                            class="mx-auto h-20 w-20 rounded-full object-cover" />
+                        <p class="mt-2">Baby</p>
+                    </div>
+                    <div><img
+                            src="https://images.unsplash.com/photo-1596464716127-f2a82984de30?auto=format&amp;fit=crop&amp;w=150&amp;q=80"
+                            class="mx-auto h-20 w-20 rounded-full object-cover" />
+                        <p class="mt-2">Girls</p>
+                    </div>
+                    <div><img
+                            src="https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?auto=format&amp;fit=crop&amp;w=150&amp;q=80"
+                            class="mx-auto h-20 w-20 rounded-full object-cover" />
+                        <p class="mt-2">Boys</p>
+                    </div>
+                    <div><img src="https://randomuser.me/api/portraits/women/44.jpg"
+                            class="mx-auto h-20 w-20 rounded-full object-cover" />
+                        <p class="mt-2">Mom</p>
+                    </div>
+                    <div><img
+                            src="https://images.unsplash.com/photo-1559454403-b8fb88521f11?auto=format&amp;fit=crop&amp;w=150&amp;q=80"
+                            class="mx-auto h-20 w-20 rounded-full object-cover" />
+                        <p class="mt-2">Toys</p>
+                    </div>
+                    <div><img
+                            src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&amp;fit=crop&amp;w=150&amp;q=80"
+                            class="mx-auto h-20 w-20 rounded-full object-cover" />
+                        <p class="mt-2">School</p>
+                    </div>
+                    <div>
+                        <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+                            <iconify-icon icon="lucide:glasses" class="text-3xl"></iconify-icon></div>
+                        <p class="mt-2">Accessories</p>
+                    </div>
+                    <div>
+                        <div
+                            class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-primary">
+                            <iconify-icon icon="lucide:gift" class="text-3xl"></iconify-icon></div>
+                        <p class="mt-2">Gift Sets</p>
+                    </div>
+                </div>
+            </section>
+            <section>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-heading font-semibold">Featured Collections <span
+                            class="text-primary">♥</span></h2><span class="text-[10px]">View All →</span>
+                </div>
+                <div class="mt-3 grid grid-cols-6 gap-3">
+                    <div class="relative h-36 overflow-hidden rounded-xl"><img
+                            src="https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover" /><b
+                            class="absolute left-3 top-3 text-sm font-heading">Newborn<br />Essentials</b></div>
+                    <div class="relative h-36 overflow-hidden rounded-xl"><img
+                            src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover" /><b
+                            class="absolute left-3 top-3 text-sm font-heading">Matching<br />Family Outfits</b></div>
+                    <div class="relative h-36 overflow-hidden rounded-xl"><img
+                            src="https://images.unsplash.com/photo-1550639525-c97d455acf70?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover" /><b
+                            class="absolute left-3 top-3 text-sm font-heading">Organic<br />Cotton</b></div>
+                    <div class="relative h-36 overflow-hidden rounded-xl"><img
+                            src="https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover" /><b
+                            class="absolute left-3 top-3 text-sm font-heading">Eid<br />Collection</b></div>
+                    <div class="relative h-36 overflow-hidden rounded-xl"><img
+                            src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover" /><b
+                            class="absolute left-3 top-3 text-sm font-heading">Party<br />Wear</b></div>
+                    <div class="relative h-36 overflow-hidden rounded-xl"><img
+                            src="https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover" /><b
+                            class="absolute left-3 top-3 text-sm font-heading">Winter<br />Collection</b></div>
+                </div>
+            </section>
+            <section>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-heading font-semibold">Top Sellers <span class="text-primary">♥</span></h2>
+                    <div class="flex gap-5 text-xs"><b
+                            class="rounded-full bg-primary px-3 py-1 text-primary-foreground">All</b><span>Baby</span><span>Girls</span><span>Boys</span><span>Mom</span><span>Accessories</span>
+                    </div>
+                </div>
+                <div class="mt-3 grid grid-cols-5 gap-4">
+                    <div class="rounded-xl border border-border p-2">
+                        <div class="relative h-44 overflow-hidden rounded-lg bg-muted"><img
+                                src="https://images.unsplash.com/photo-1519278409-1f56fdda7fe5?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                class="h-full w-full object-cover" /><b
+                                class="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] text-primary-foreground">-20%</b>
+                        </div>
+                        <p class="mt-2 text-xs">Cotton Printed T-Shirt</p><b class="text-sm text-primary">৳ 600</b><span
+                            class="float-right text-[10px] text-tertiary">★ 4.7</span><button
+                            class="mt-2 min-h-9 w-full rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">Add
+                            To Cart</button>
+                    </div>
+                    <div class="rounded-xl border border-border p-2">
+                        <div class="relative h-44 overflow-hidden rounded-lg bg-muted"><img
+                                src="https://images.unsplash.com/photo-1577900232427-18219b9166a0?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                class="h-full w-full object-cover" /><b
+                                class="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] text-primary-foreground">-15%</b>
+                        </div>
+                        <p class="mt-2 text-xs">Denim Dungaree Set</p><b class="text-sm text-primary">৳ 1,275</b><span
+                            class="float-right text-[10px] text-tertiary">★ 4.8</span><button
+                            class="mt-2 min-h-9 w-full rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">Add
+                            To Cart</button>
+                    </div>
+                    <div class="rounded-xl border border-border p-2">
+                        <div class="relative h-44 overflow-hidden rounded-lg bg-muted"><img
+                                src="https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                class="h-full w-full object-cover" /><b
+                                class="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] text-primary-foreground">-25%</b>
+                        </div>
+                        <p class="mt-2 text-xs">Floral Baby Frock</p><b class="text-sm text-primary">৳ 1,125</b><span
+                            class="float-right text-[10px] text-tertiary">★ 4.9</span><button
+                            class="mt-2 min-h-9 w-full rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">Add
+                            To Cart</button>
+                    </div>
+                    <div class="rounded-xl border border-border p-2">
+                        <div class="relative h-44 overflow-hidden rounded-lg bg-muted"><img
+                                src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                class="h-full w-full object-cover" /><b
+                                class="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] text-primary-foreground">-10%</b>
+                        </div>
+                        <p class="mt-2 text-xs">Mom Cotton Kurti</p><b class="text-sm text-primary">৳ 1,350</b><span
+                            class="float-right text-[10px] text-tertiary">★ 4.8</span><button
+                            class="mt-2 min-h-9 w-full rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">Add
+                            To Cart</button>
+                    </div>
+                    <div class="rounded-xl border border-border p-2">
+                        <div class="relative h-44 overflow-hidden rounded-lg bg-muted"><img
+                                src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                                class="h-full w-full object-cover" /><b
+                                class="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] text-primary-foreground">-27%</b>
+                        </div>
+                        <p class="mt-2 text-xs">Kids Sports Shoes</p><b class="text-sm text-primary">৳ 1,280</b><span
+                            class="float-right text-[10px] text-tertiary">★ 4.6</span><button
+                            class="mt-2 min-h-9 w-full rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">Add
+                            To Cart</button>
+                    </div>
+                </div>
+            </section>
+            <section>
+                <h2 class="text-lg font-heading font-semibold">Shop by Age <span class="text-primary">♥</span></h2>
+                <div class="mt-3 grid grid-cols-5 gap-4">
+                    <div class="relative h-28 overflow-hidden rounded-xl bg-muted"><img
+                            src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover opacity-75" /><b
+                            class="absolute bottom-3 left-3 text-sm font-heading">0-12<br />Months</b></div>
+                    <div class="relative h-28 overflow-hidden rounded-xl bg-secondary"><img
+                            src="https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover opacity-75" /><b
+                            class="absolute bottom-3 left-3 text-sm font-heading">1-3<br />Years</b></div>
+                    <div class="relative h-28 overflow-hidden rounded-xl bg-muted"><img
+                            src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover opacity-75" /><b
+                            class="absolute bottom-3 left-3 text-sm font-heading">4-7<br />Years</b></div>
+                    <div class="relative h-28 overflow-hidden rounded-xl bg-accent"><img
+                            src="https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                            class="h-full w-full object-cover opacity-75" /><b
+                            class="absolute bottom-3 left-3 text-sm font-heading">8-12<br />Years</b></div>
+                    <div class="relative h-28 overflow-hidden rounded-xl bg-muted"><img
+                            src="https://randomuser.me/api/portraits/women/44.jpg"
+                            class="h-full w-full object-cover opacity-75" /><b
+                            class="absolute bottom-3 left-3 text-sm font-heading">Mom<br />Collection</b></div>
+                </div>
+            </section>
+            <section>
+                <h2 class="text-lg font-heading font-semibold">Trending Brands <span class="text-primary">♥</span></h2>
+                <div class="mt-3 grid grid-cols-7 gap-3">
+                    <div class="rounded-xl border border-border p-4 text-center text-sm font-bold text-tertiary">
+                        carter's</div>
+                    <div
+                        class="rounded-xl border border-border p-4 text-center text-sm font-bold text-muted-foreground">
+                        mothercare</div>
+                    <div
+                        class="rounded-xl border border-border p-4 text-center text-2xl font-heading font-bold text-primary">
+                        H&amp;M</div>
+                    <div class="rounded-xl border border-border p-4 text-center text-lg font-heading font-bold">
+                        ZARA<small class="block text-[7px]">KIDS</small></div>
+                    <div class="rounded-xl border border-border p-4 text-center"><iconify-icon icon="lucide:check"
+                            class="text-2xl"></iconify-icon></div>
+                    <div class="rounded-xl border border-border p-4 text-center text-lg font-bold">adidas</div>
+                    <div class="rounded-xl border border-border p-4 text-center text-lg font-heading font-bold">
+                        GAP<br /><small>KIDS</small></div>
+                </div>
+            </section>
+            <section>
+                <h2 class="text-lg font-heading font-semibold">From Our Instagram <span class="text-primary">♥</span>
+                </h2>
+                <p class="text-[10px] text-muted-foreground">Follow us <span class="text-primary">@kidsandmom</span></p>
+                <div class="mt-3 grid grid-cols-5 gap-3"><img
+                        src="https://uxmagic.blob.core.windows.net/public/agent-images/kids-instagram-1785248255030-1bgbyfq0omn.png"
+                        class="h-40 w-full rounded-xl object-cover" /><img
+                        src="https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                        class="h-40 w-full rounded-xl object-cover" /><img
+                        src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                        class="h-40 w-full rounded-xl object-cover" /><img
+                        src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                        class="h-40 w-full rounded-xl object-cover" /><img
+                        src="https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                        class="h-40 w-full rounded-xl object-cover" /></div>
+            </section>
+            <section>
+                <h2 class="text-lg font-heading font-semibold">What Our Customers Say <span
+                        class="text-primary">♥</span></h2>
+                <div class="mt-3 grid grid-cols-3 gap-4">
+                    <div class="rounded-xl border border-border bg-card p-5">
+                        <div class="text-3xl text-primary">“</div>
+                        <p class="text-xs leading-5 text-muted-foreground">Amazing quality and super fast delivery! My
+                            baby loves the clothes. Will shop again for sure.</p>
+                        <div class="mt-3 flex items-center gap-2"><img
+                                src="https://randomuser.me/api/portraits/women/12.jpg" class="h-8 w-8 rounded-full" />
+                            <p class="text-[10px]"><b>Jannatul Ferdous</b><br />Verified Buyer</p><span
+                                class="ml-auto text-xs text-tertiary">★★★★★</span>
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-border bg-card p-5">
+                        <div class="text-3xl text-primary">“</div>
+                        <p class="text-xs leading-5 text-muted-foreground">Best shopping experience for kids products in
+                            Bangladesh. Highly recommended!</p>
+                        <div class="mt-3 flex items-center gap-2"><img
+                                src="https://randomuser.me/api/portraits/women/32.jpg" class="h-8 w-8 rounded-full" />
+                            <p class="text-[10px]"><b>Raisa Islam</b><br />Verified Buyer</p><span
+                                class="ml-auto text-xs text-tertiary">★★★★★</span>
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-border bg-card p-5">
+                        <div class="text-3xl text-primary">“</div>
+                        <p class="text-xs leading-5 text-muted-foreground">The matching outfits are so cute! Great
+                            collection and premium quality.</p>
+                        <div class="mt-3 flex items-center gap-2"><img
+                                src="https://randomuser.me/api/portraits/women/47.jpg" class="h-8 w-8 rounded-full" />
+                            <p class="text-[10px]"><b>Nusrat Jahan</b><br />Verified Buyer</p><span
+                                class="ml-auto text-xs text-tertiary">★★★★★</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-heading font-semibold">Parenting &amp; Style Guide <span
+                            class="text-primary">♥</span></h2><span class="text-[10px]">View All Articles →</span>
+                </div>
+                <div class="mt-3 grid grid-cols-3 gap-4">
+                    <div class="flex overflow-hidden rounded-xl bg-secondary"><img
+                            src="https://images.unsplash.com/photo-1542038382126-77ae2819338d?auto=format&amp;fit=crop&amp;w=250&amp;q=80"
+                            class="w-2/5 object-cover" />
+                        <div class="p-4"><b class="text-[9px] text-primary">PARENTING</b>
+                            <p class="mt-1 text-sm font-heading">10 Tips for New Parents to Care for Baby</p><span
+                                class="text-[10px] text-primary">Read More →</span>
+                        </div>
+                    </div>
+                    <div class="flex overflow-hidden rounded-xl bg-secondary"><img
+                            src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&amp;fit=crop&amp;w=250&amp;q=80"
+                            class="w-2/5 object-cover" />
+                        <div class="p-4"><b class="text-[9px] text-primary">STYLE GUIDE</b>
+                            <p class="mt-1 text-sm font-heading">Summer Outfit Ideas for Kids</p><span
+                                class="text-[10px] text-primary">Read More →</span>
+                        </div>
+                    </div>
+                    <div class="flex overflow-hidden rounded-xl bg-muted"><img
+                            src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&amp;fit=crop&amp;w=250&amp;q=80"
+                            class="w-2/5 object-cover" />
+                        <div class="p-4"><b class="text-[9px] text-tertiary">GUIDE</b>
+                            <p class="mt-1 text-sm font-heading">How to Choose the Right Shoes for Kids</p><span
+                                class="text-[10px] text-tertiary">Read More →</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="flex items-center overflow-hidden rounded-3xl bg-secondary"><img
+                    src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&amp;fit=crop&amp;w=300&amp;q=80"
+                    class="h-40 w-1/4 object-cover" />
+                <div class="w-1/3 p-6">
+                    <p class="text-xs">Join Our Family Club <span class="text-primary">♥</span></p>
+                    <h2 class="mt-1 text-3xl font-heading font-bold">Get 10% OFF</h2>
+                    <p class="text-xs text-muted-foreground">Your First Order</p>
+                    <p class="mt-2 text-[9px] text-muted-foreground">Be the first to know about new arrivals, exclusive
+                        offers and parenting tips!</p>
+                </div>
+                <div class="flex flex-1 items-center gap-2 rounded-full bg-card p-2"><span
+                        class="flex-1 px-3 text-xs text-muted-foreground">Enter your email address</span><button
+                        class="min-h-11 rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground">Subscribe</button>
+                </div>
+            </section>
+        </main>
+        <footer class="mt-4 border-t border-border bg-card">
+            <div class="mx-auto grid max-w-7xl grid-cols-5 gap-8 px-6 py-10 text-xs">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary">
+                            <iconify-icon icon="lucide:heart"></iconify-icon></div><b class="font-heading text-lg">Kids
+                            &amp; Mom</b>
+                    </div>
+                    <p class="mt-3 leading-5 text-muted-foreground">Premium quality products for kids and moms. Because
+                        every moment with them matters.</p>
+                    <div class="mt-3 flex gap-2 text-primary"><iconify-icon
+                            icon="lucide:facebook"></iconify-icon><iconify-icon
+                            icon="lucide:instagram"></iconify-icon><iconify-icon
+                            icon="lucide:youtube"></iconify-icon><iconify-icon icon="lucide:heart"></iconify-icon></div>
+                </div>
+                <div><b>Shop</b>
+                    <p class="mt-3 space-y-1 leading-5 text-muted-foreground">
+                        Baby<br />Girls<br />Boys<br />Mom<br />Maternity<br />Toys<br />Sale</p>
+                </div>
+                <div><b>Customer Care</b>
+                    <p class="mt-3 leading-5 text-muted-foreground">Contact Us<br />FAQ<br />Shipping Info<br />Returns
+                        &amp; Exchanges<br />Order Tracking<br />Size Guide</p>
+                </div>
+                <div><b>Information</b>
+                    <p class="mt-3 leading-5 text-muted-foreground">About Us<br />Blog<br />Privacy Policy<br />Terms
+                        &amp; Conditions<br />Refund Policy</p>
+                </div>
+                <div><b>Download Our App</b>
+                    <div class="mt-3 space-y-2">
+                        <div
+                            class="flex w-32 items-center gap-2 rounded-lg bg-foreground px-3 py-2 text-primary-foreground">
+                            <iconify-icon icon="lucide:play"></iconify-icon><span class="text-[9px]">GET IT ON<br /><b
+                                    class="text-xs">Google Play</b></span></div>
+                        <div
+                            class="flex w-32 items-center gap-2 rounded-lg bg-foreground px-3 py-2 text-primary-foreground">
+                            <iconify-icon icon="lucide:smartphone"></iconify-icon><span class="text-[9px]">Download on
+                                the<br /><b class="text-xs">App Store</b></span></div>
+                    </div>
+                    <p class="mt-4 text-[10px]">We Accept</p>
+                    <div class="mt-2 flex gap-2"><b class="rounded bg-muted px-2 py-1 text-[10px]">VISA</b><b
+                            class="rounded bg-muted px-2 py-1 text-[10px]">bKash</b><b
+                            class="rounded bg-muted px-2 py-1 text-[10px]">Nagad</b></div>
+                </div>
+            </div>
+            <div class="border-t border-border bg-secondary">
+                <div
+                    class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-[10px] text-muted-foreground">
+                    <span>© 2025 Kids &amp; Mom. All Rights Reserved.</span><span>Privacy Policy　 |　 Terms &amp;
+                        Conditions　 |　 Cookies Policy</span><button
+                        class="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card"><iconify-icon
+                            icon="lucide:arrow-up"></iconify-icon></button></div>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>
