@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import { RowDataPacket } from "mysql2/promise";
 import jwt from "jsonwebtoken";
-import { db } from "@/lib/db";
+import db  from "@/lib/db";
+import { PoolClient } from "pg";
 
 interface JwtPayload {
   id: number;
@@ -20,366 +21,431 @@ interface Order extends RowDataPacket {
 }
 
 
-interface Product extends RowDataPacket {
-  id: number;
-  price: number;
-}
-
-interface Customer extends RowDataPacket {
-  id: number;
-  name: string;
-  email: string | null;
-  phone: string;
-}
-
-
 export async function POST(req: NextRequest) {
-  const connection = await db.getConnection();
+    let client: PoolClient | null = null;
 
-  try {
-    const token = req.cookies.get("user_token")?.value;
+    try {
+        // ==============================
+        // Get token
+        // ==============================
 
-    const { shipping, shippingRate, shippingLocation, couponDiscount, cart } = await req.json();
+        const token = req.cookies.get("user_token")?.value;
 
-    if (!cart?.length) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Cart is empty.",
-        },
-        { status: 400 }
-      );
-    }
+        const {
+            shipping,
+            shippingRate,
+            shippingLocation,
+            couponDiscount,
+            cart,
+        } = await req.json();
 
-    if (!shipping?.phone) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Phone number is required.",
-        },
-        { status: 400 }
-      );
-    }
+        // ==============================
+        // Validate cart
+        // ==============================
 
-    // --------------------------------------------------
-    // Validate phone
-    // --------------------------------------------------
-
-    const phone = String(shipping.phone).replace(/[\s-]/g, "");
-
-    // Accept international or local numeric phone numbers
-    if (!/^\+?\d{8,15}$/.test(phone)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Please provide a valid phone number.",
-        },
-        { status: 400 }
-      );
-    }
-
-    await connection.beginTransaction();
-
-    // --------------------------------------------------
-    // Get / Create Customer
-    // --------------------------------------------------
-
-    let userId: number;
-
-    if (token) {
-      // -----------------------------------------------
-      // Logged-in user
-      // -----------------------------------------------
-
-      try {
-        const decoded = jwt.verify(
-          token,
-          process.env.JWT_SECRET!
-        ) as JwtPayload;
-
-        if (!decoded.id) {
-          await connection.rollback();
-
-          return NextResponse.json(
-            {
-              success: false,
-              message: "Invalid authentication token.",
-            },
-            { status: 401 }
-          );
+        if (!cart?.length) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Cart is empty.",
+                },
+                { status: 400 }
+            );
         }
 
-        userId = Number(decoded.id);
-      } catch (error) {
-        await connection.rollback();
+        // ==============================
+        // Validate phone
+        // ==============================
 
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Invalid authentication token.",
-          },
-          { status: 401 }
-        );
-      }
-    } else {
-      // -----------------------------------------------
-      // Guest checkout
-      // -----------------------------------------------
+        if (!shipping?.phone) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Phone number is required.",
+                },
+                { status: 400 }
+            );
+        }
 
-      const [existingCustomers] =
-        await connection.query<Customer[]>(
-          `
-          SELECT id, name, email, phone
-          FROM customers
-          WHERE phone = ?
-          LIMIT 1
-          `,
-          [phone]
-        );
+        // --------------------------------------------------
+        // Validate phone
+        // --------------------------------------------------
 
-      if (existingCustomers.length) {
-        // Existing customer
-        userId = existingCustomers[0].id;
-      } else {
-        // ---------------------------------------------
-        // Create new customer account
-        // ---------------------------------------------
+        const phone = String(shipping.phone).replace(/[\s-]/g, "");
 
-        const name = shipping.name?.trim() || "Guest Customer";
-        const email = shipping.email?.trim() || null;
+        // Accept international or local numeric phone numbers
+        if (!/^\+?\d{8,15}$/.test(phone)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Please provide a valid phone number.",
+                },
+                { status: 400 }
+            );
+        }
 
+        // ==============================
+        // Start PostgreSQL transaction
+        // ==============================
 
-        const [customer] =
-          await connection.query<ResultSetHeader>(
+        client = await db.connect();
+
+        await client.query("BEGIN");
+
+        // --------------------------------------------------
+        // Get / Create Customer
+        // --------------------------------------------------
+
+        let userId: number;
+
+        if (token) {
+            // -----------------------------------------------
+            // Logged-in user
+            // -----------------------------------------------
+
+            try {
+                const decoded = jwt.verify(
+                    token,
+                    process.env.JWT_SECRET!
+                ) as JwtPayload;
+
+                if (!decoded.id) {
+                    await client.query("ROLLBACK");
+
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message: "Invalid authentication token.",
+                        },
+                        { status: 401 }
+                    );
+                }
+
+                userId = Number(decoded.id);
+            } catch (error) {
+                await client.query("ROLLBACK");
+
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: "Invalid authentication token.",
+                    },
+                    { status: 401 }
+                );
+            }
+        } else {
+            // -----------------------------------------------
+            // Guest checkout
+            // -----------------------------------------------
+
+            const existingCustomerResult = await client.query<{
+                id: number;
+                name: string;
+                email: string | null;
+                phone: string | null;
+            }>(
+                `
+                SELECT id, name, email, phone
+                FROM customers
+                WHERE phone = $1
+                LIMIT 1
+                `,
+                [phone]
+            );
+
+            const existingCustomers = existingCustomerResult.rows;
+
+            if (existingCustomers.length) {
+                // Existing customer
+                userId = Number(existingCustomers[0].id);
+            } else {
+                // ---------------------------------------------
+                // Create new customer account
+                // ---------------------------------------------
+
+                const name =
+                    shipping.name?.trim() || "Guest Customer";
+
+                const email =
+                    shipping.email?.trim() || null;
+
+                const customerResult = await client.query<{
+                    id: number;
+                }>(
+                    `
+                    INSERT INTO customers
+                    (
+                        name,
+                        email,
+                        phone,
+                        password
+                    )
+                    VALUES ($1, $2, $3, $4)
+                    RETURNING id
+                    `,
+                    [
+                        name,
+                        email,
+                        phone,
+                        "",
+                    ]
+                );
+
+                userId = Number(customerResult.rows[0].id);
+            }
+        }
+
+        // --------------------------------------------------
+        // Calculate subtotal using DB prices
+        // --------------------------------------------------
+
+        let subtotal = 0;
+
+        for (const item of cart) {
+            const qty = Number(item.qty);
+
+            if (!Number.isInteger(qty) || qty <= 0) {
+                throw new Error("Invalid product quantity.");
+            }
+
+            const productResult = await client.query<{
+                id: number;
+                price: number | string;
+                offer_price: number | string | null;
+            }>(
+                `
+                SELECT id, price, offer_price
+                FROM products
+                WHERE id = $1
+                LIMIT 1
+                `,
+                [item.id]
+            );
+
+            const rows = productResult.rows;
+
+            if (!rows.length) {
+                throw new Error(`Product ${item.id} not found.`);
+            }
+
+            const price = Number(rows[0].price);
+            const offerPrice = Number(rows[0].offer_price);
+
+            // Use offer price if it exists and is lower than normal price
+            const finalPrice =
+                offerPrice > 0 && offerPrice < price
+                    ? offerPrice
+                    : price;
+
+            subtotal += finalPrice * qty;
+        }
+
+        // --------------------------------------------------
+        // Coupon
+        // --------------------------------------------------
+
+        const discount = 0;
+
+        // TODO:
+        // Calculate coupon discount here using couponId
+
+        // --------------------------------------------------
+        // Total
+        // --------------------------------------------------
+
+        const total =
+            Number(subtotal) +
+            Number(shippingRate) -
+            (Number(subtotal) * Number(couponDiscount)) / 100;
+
+        // --------------------------------------------------
+        // Order number
+        // --------------------------------------------------
+
+        const orderNo = `ORD-${Date.now().toString().slice(-6)}`;
+
+        const shippingAddress = JSON.stringify(shipping);
+
+        // --------------------------------------------------
+        // Create Order
+        // --------------------------------------------------
+
+        const orderResult = await client.query<{
+            id: number;
+        }>(
             `
-            INSERT INTO customers
+            INSERT INTO orders
             (
-              name,
-              email,
-              phone,
-              password
+                order_no,
+                user_id,
+                coupon_discount,
+                subtotal,
+                shipping_rate,
+                shipping_location,
+                discount,
+                total,
+                payment_status,
+                order_status,
+                shipping_address,
+                ordered_at
             )
-            VALUES (?, ?, ?, ?)
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                $11,
+                NOW()
+            )
+            RETURNING id
             `,
             [
-              name,
-              email,
-              phone,
-              "",
+                orderNo,
+                userId,
+                couponDiscount,
+                subtotal,
+                shippingRate,
+                shippingLocation,
+                discount,
+                total,
+                "PENDING",
+                "PENDING",
+                shippingAddress,
             ]
-          );
+        );
 
-        userId = customer.insertId;
-      }
+        const orderId = Number(orderResult.rows[0].id);
+
+        // --------------------------------------------------
+        // Create Order Items
+        // --------------------------------------------------
+
+        for (const item of cart) {
+            const productResult = await client.query<{
+                id: number;
+                price: number | string;
+                offer_price: number | string | null;
+            }>(
+                `
+                SELECT id, price, offer_price
+                FROM products
+                WHERE id = $1
+                LIMIT 1
+                `,
+                [item.id]
+            );
+
+            const rows = productResult.rows;
+
+            if (!rows.length) {
+                throw new Error(`Product ${item.id} not found.`);
+            }
+
+            const price = Number(rows[0].price);
+            const offerPrice = Number(rows[0].offer_price);
+            const qty = Number(item.qty);
+
+            // Use offer price if available and valid
+            const finalPrice =
+                offerPrice > 0 && offerPrice < price
+                    ? offerPrice
+                    : price;
+
+            const itemSubtotal = finalPrice * qty;
+
+            await client.query(
+                `
+                INSERT INTO order_items
+                (
+                    order_id,
+                    product_id,
+                    qty,
+                    price,
+                    subtotal
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                `,
+                [
+                    orderId,
+                    item.id,
+                    qty,
+                    finalPrice,
+                    itemSubtotal,
+                ]
+            );
+        }
+
+        // --------------------------------------------------
+        // Commit
+        // --------------------------------------------------
+
+        await client.query("COMMIT");
+
+        // --------------------------------------------------
+        // Total quantity of all products
+        // --------------------------------------------------
+
+        const totalItems = cart.reduce(
+            (total: number, item: { qty: number }) =>
+                total + Number(item.qty),
+            0
+        );
+
+        // --------------------------------------------------
+        // Response
+        // --------------------------------------------------
+
+        return NextResponse.json({
+            success: true,
+            message: "Order placed successfully.",
+            orderId,
+            orderNo,
+            order: {
+                orderId,
+                order_no: orderNo,
+                items_total: totalItems,
+                total: Number(total),
+                ordered_at: new Date().toISOString(),
+            },
+            userId,
+            isGuest: !token,
+        });
+    } catch (error) {
+        if (client) {
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackError) {
+                console.error(
+                    "Rollback error:",
+                    rollbackError
+                );
+            }
+        }
+
+        console.error("Place order error:", error);
+
+        return NextResponse.json(
+            {
+                success: false,
+                message: "Failed to place order.",
+            },
+            { status: 500 }
+        );
+    } finally {
+        if (client) {
+            client.release();
+        }
     }
-
-    // --------------------------------------------------
-    // Calculate subtotal using DB prices
-    // --------------------------------------------------
-
-    let subtotal = 0;
-
-    for (const item of cart) {
-      const qty = Number(item.qty);
-
-      if (!Number.isInteger(qty) || qty <= 0) {
-        throw new Error("Invalid product quantity.");
-      }
-
-      const [rows] = await connection.query<Product[]>(
-        `
-    SELECT id, price, offer_price
-    FROM products
-    WHERE id = ?
-    LIMIT 1
-    `,
-        [item.id]
-      );
-
-      if (!rows.length) {
-        throw new Error(`Product ${item.id} not found.`);
-      }
-
-      const price = Number(rows[0].price);
-      const offerPrice = Number(rows[0].offer_price);
-
-      // Use offer price if it exists and is lower than the normal price
-      const finalPrice =
-        offerPrice > 0 && offerPrice < price
-          ? offerPrice
-          : price;
-
-      subtotal += finalPrice * qty;
-    }
-
-
-    // --------------------------------------------------
-    // Coupon
-    // --------------------------------------------------
-
-    const discount = 0;
-
-    // TODO:
-    // Calculate coupon discount here using couponId
-
-    // --------------------------------------------------
-    // Total
-    // --------------------------------------------------
-
-   const total = Number(subtotal) + Number(shippingRate) - (Number(subtotal) * Number(couponDiscount)) / 100;
-
-    // --------------------------------------------------
-    // Order number
-    // --------------------------------------------------
-
-    const orderNo = `ORD-${Date.now().toString().slice(-6)}`;
-
-    const shippingAddress = JSON.stringify(shipping);
-
-    // --------------------------------------------------
-    // Create Order
-    // --------------------------------------------------
-
-    const [order] =
-      await connection.query<ResultSetHeader>(
-        `
-        INSERT INTO orders
-        (
-          order_no,
-          user_id,
-          coupon_discount,
-          subtotal,
-          shipping_rate,
-          shipping_location,
-          discount,
-          total,
-          payment_status,
-          order_status,
-          shipping_address,
-          ordered_at
-        )
-        VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `,
-        [
-          orderNo,
-          userId,
-          couponDiscount,
-          subtotal,
-          shippingRate,
-          shippingLocation,
-          discount,
-          total,
-          "PENDING",
-          "PENDING",
-          shippingAddress,
-        ]
-      );
-
-    const orderId = order.insertId;
-
-    // --------------------------------------------------
-    // Create Order Items
-    // --------------------------------------------------
-
-    for (const item of cart) {
-      const [rows] = await connection.query<Product[]>(
-        `
-    SELECT id, price, offer_price
-    FROM products
-    WHERE id = ?
-    LIMIT 1
-    `,
-        [item.id]
-      );
-
-      if (!rows.length) {
-        throw new Error(`Product ${item.id} not found.`);
-      }
-
-      const price = Number(rows[0].price);
-      const offerPrice = Number(rows[0].offer_price);
-      const qty = Number(item.qty);
-
-      // Use offer price if available and valid
-      const finalPrice =
-        offerPrice > 0 && offerPrice < price
-          ? offerPrice
-          : price;
-
-      const itemSubtotal = finalPrice * qty;
-
-      await connection.query(
-        `
-    INSERT INTO order_items
-    (
-      order_id,
-      product_id,
-      qty,
-      price,
-      subtotal
-    )
-    VALUES (?, ?, ?, ?, ?)
-    `,
-        [
-          orderId,
-          item.id,
-          qty,
-          finalPrice,
-          itemSubtotal,
-        ]
-      );
-    }
-
-    // --------------------------------------------------
-    // Commit
-    // --------------------------------------------------
-
-    await connection.commit();
-
-    // Total quantity of all products
-    const totalItems = cart.reduce(
-      (total: number, item: { qty: number }) =>
-        total + Number(item.qty),
-      0
-    );
-
-
-    return NextResponse.json({
-      success: true,
-      message: "Order placed successfully.",
-      orderId,
-      orderNo,
-      order: {
-        orderId,
-        order_no: orderNo,
-        items_total: totalItems,
-        total: Number(total),
-        ordered_at: new Date().toISOString(),
-      },
-      userId,
-      isGuest: !token,
-    });
-  } catch (error) {
-    await connection.rollback();
-
-    console.error("Place order error:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to place order.",
-      },
-      { status: 500 }
-    );
-  } finally {
-    connection.release();
-  }
 }
 
 export async function GET(req: NextRequest) {
-  const connection = await db.getConnection();
-
   try {
     const token = req.cookies.get("user_token")?.value;
 
@@ -397,34 +463,64 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
 
+    // ==============================
     // Pagination
-    const page = Math.max(Number(searchParams.get("page")) || 1, 1);
-    const limit = Math.max(Number(searchParams.get("limit")) || 12, 1);
+    // ==============================
+
+    const page = Math.max(
+      Number(searchParams.get("page")) || 1,
+      1
+    );
+
+    const limit = Math.max(
+      Number(searchParams.get("limit")) || 12,
+      1
+    );
+
     const offset = (page - 1) * limit;
 
+    // ==============================
     // Search & filter
-    const search = searchParams.get("search")?.trim() || "";
-    const status = searchParams.get("status")?.trim() || "All";
+    // ==============================
 
-    const conditions: string[] = ["o.user_id = ?"];
+    const search =
+      searchParams.get("search")?.trim() || "";
+
+    const status =
+      searchParams.get("status")?.trim() || "All";
+
+    const conditions: string[] = ["o.user_id = $1"];
     const params: (string | number)[] = [userId];
 
     // Search by order number
     if (search) {
-      conditions.push("o.order_no LIKE ?");
+      const paramIndex = params.length + 1;
+
+      conditions.push(
+        `o.order_no ILIKE $${paramIndex}`
+      );
+
       params.push(`%${search}%`);
     }
 
     // Filter by order status
     if (status && status !== "All") {
-      conditions.push("o.order_status = ?");
+      const paramIndex = params.length + 1;
+
+      conditions.push(
+        `o.order_status = $${paramIndex}`
+      );
+
       params.push(status);
     }
 
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
+    // ==============================
     // Get total orders
-    const [countRows] = await connection.query<RowDataPacket[]>(
+    // ==============================
+
+    const countResult = await db.query<{ total: string }>(
       `
       SELECT COUNT(*) AS total
       FROM orders o
@@ -433,11 +529,30 @@ export async function GET(req: NextRequest) {
       params
     );
 
-    const total = Number(countRows[0]?.total || 0);
+    const total = Number(
+      countResult.rows[0]?.total || 0
+    );
+
     const totalPages = Math.ceil(total / limit);
 
+    // ==============================
+    // Pagination parameters
+    // ==============================
+
+    const limitParam = `$${params.length + 1}`;
+    const offsetParam = `$${params.length + 2}`;
+
+    const orderParams = [
+      ...params,
+      limit,
+      offset,
+    ];
+
+    // ==============================
     // Get orders
-    const [orders] = await connection.query<Order[]>(
+    // ==============================
+
+    const ordersResult = await db.query<Order>(
       `
       SELECT
         o.id,
@@ -469,10 +584,17 @@ export async function GET(req: NextRequest) {
         o.order_status,
         o.ordered_at
       ORDER BY o.ordered_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limitParam}
+      OFFSET ${offsetParam}
       `,
-      [...params, limit, offset]
+      orderParams
     );
+
+    const orders = ordersResult.rows;
+
+    // ==============================
+    // Response
+    // ==============================
 
     return NextResponse.json({
       success: true,
@@ -496,7 +618,5 @@ export async function GET(req: NextRequest) {
       },
       { status: 500 }
     );
-  } finally {
-    connection.release();
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 interface User extends RowDataPacket {
   id: number;
@@ -12,6 +12,7 @@ interface User extends RowDataPacket {
   password: string | null;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
 }
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     // =====================================================
     // 2. Find customer by email OR phone
     // =====================================================
-    const [rows] = await db.query<User[]>(
+    const result = await db.query<User>(
       `
         SELECT
           id,
@@ -45,11 +46,13 @@ export async function POST(req: NextRequest) {
           password,
           status
         FROM customers
-        WHERE email = ? OR phone = ?
+        WHERE email = $1 OR phone = $2
         LIMIT 1
       `,
       [loginValue, loginValue]
     );
+
+    const rows = result.rows;
 
     // =====================================================
     // 3. CUSTOMER DOES NOT EXIST

@@ -1,10 +1,11 @@
-// app/api/auth/register/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
+import db from "@/lib/db";
+
+interface ExistingUser {
+  id: number;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,16 +39,18 @@ export async function POST(req: NextRequest) {
     // =====================================================
     // 2. Check if user already exists
     // =====================================================
-    const [existing] = await db.query<RowDataPacket[]>(
+    const existingResult = await db.query<ExistingUser>(
       `
       SELECT id
       FROM customers
-      WHERE (email IS NOT NULL AND email = ?)
-         OR (phone IS NOT NULL AND phone = ?)
+      WHERE (email IS NOT NULL AND email = $1)
+         OR (phone IS NOT NULL AND phone = $2)
       LIMIT 1
       `,
       [email ?? null, phone ?? null]
     );
+
+    const existing = existingResult.rows;
 
     if (existing.length > 0) {
       return NextResponse.json(
@@ -67,11 +70,12 @@ export async function POST(req: NextRequest) {
     // =====================================================
     // 4. Insert user
     // =====================================================
-    const [result] = await db.query<ResultSetHeader>(
+    const result = await db.query<{ id: number }>(
       `
       INSERT INTO customers
       (name, email, phone, password)
-      VALUES (?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
       `,
       [
         name,
@@ -81,9 +85,8 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-
     // Newly created user's ID
-    const userId = result.insertId;
+    const userId = result.rows[0].id;
 
     // =====================================================
     // 5. Create JWT

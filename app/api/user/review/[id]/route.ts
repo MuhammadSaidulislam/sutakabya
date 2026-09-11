@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import  db from "@/lib/db";
 
 import { verifyToken } from "@/lib/auth";
 import { RowDataPacket } from "mysql2";
@@ -124,7 +124,7 @@ export async function PUT(
     // VERIFY REVIEW OWNERSHIP + DELIVERED ORDER
     // ============================================================
 
-    const [reviews] = await db.query<RowDataPacket[]>(
+    const reviewResult = await db.query<{ id: number }>(
       `
       SELECT
         pr.id
@@ -133,9 +133,9 @@ export async function PUT(
       INNER JOIN orders o
         ON o.id = pr.order_id
 
-      WHERE pr.id = ?
-        AND pr.user_id = ?
-        AND o.user_id = ?
+      WHERE pr.id = $1
+        AND pr.user_id = $2
+        AND o.user_id = $3
         AND o.order_status = 'DELIVERED'
 
       LIMIT 1
@@ -146,6 +146,8 @@ export async function PUT(
         userId,
       ]
     );
+
+    const reviews = reviewResult.rows;
 
     if (reviews.length === 0) {
       return NextResponse.json(
@@ -165,12 +167,12 @@ export async function PUT(
       `
       UPDATE product_reviews
       SET
-        rating = ?,
-        review = ?,
+        rating = $1,
+        review = $2,
         status = 'PENDING',
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-        AND user_id = ?
+      WHERE id = $3
+        AND user_id = $4
       `,
       [
         rating,

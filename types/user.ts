@@ -7,7 +7,7 @@ export interface User {
   profile_image?: string;
   status: "ACTIVE" | "INACTIVE";
   created_at: string;
-
+password?: string;
   total_orders: number;
   total_spent: string;
 

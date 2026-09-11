@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { verifyToken } from '@/lib/auth';
 interface CountRow {
@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Search
-    const search = searchParams.get("search")?.trim() || "";
+    const search =
+      searchParams.get("search")?.trim() || "";
 
     const searchValue = `%${search}%`;
 
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     // TOTAL COUNT
     // ============================================================
 
-    const [countRows] = await db.query<RowDataPacket[] & CountRow[]>(
+    const countResult = await db.query<{ total: string }>(
       `
       SELECT COUNT(*) AS total
       FROM orders o
@@ -77,12 +78,12 @@ export async function GET(request: NextRequest) {
       INNER JOIN products p
         ON p.id = oi.product_id
 
-      WHERE o.user_id = ?
+      WHERE o.user_id = $1
         AND o.order_status = 'DELIVERED'
         AND (
-          ? = ''
-          OR p.name LIKE ?
-          OR p.sku LIKE ?
+          $2 = ''
+          OR p.name ILIKE $3
+          OR p.sku ILIKE $4
         )
       `,
       [
@@ -93,7 +94,9 @@ export async function GET(request: NextRequest) {
       ]
     );
 
-    const total = Number(countRows[0]?.total || 0);
+    const total = Number(
+      countResult.rows[0]?.total || 0
+    );
 
     const totalPages = Math.ceil(total / limit);
 
@@ -101,7 +104,7 @@ export async function GET(request: NextRequest) {
     // GET DELIVERED ORDERS + PRODUCTS + REVIEWS
     // ============================================================
 
-    const [rows] = await db.query<RowDataPacket[]>(
+    const rowsResult = await db.query(
       `
       SELECT
 
@@ -160,26 +163,26 @@ export async function GET(request: NextRequest) {
 
       LEFT JOIN product_images pi
         ON pi.product_id = oi.product_id
-        AND pi.is_thumbnail = 1
+        AND pi.is_thumbnail = true
 
       LEFT JOIN product_reviews pr
         ON pr.order_id = o.id
         AND pr.product_id = oi.product_id
         AND pr.user_id = o.user_id
 
-      WHERE o.user_id = ?
+      WHERE o.user_id = $1
         AND o.order_status = 'DELIVERED'
         AND (
-          ? = ''
-          OR p.name LIKE ?
-          OR p.sku LIKE ?
+          $2 = ''
+          OR p.name ILIKE $3
+          OR p.sku ILIKE $4
         )
 
       ORDER BY
         o.created_at DESC,
         oi.id ASC
 
-      LIMIT ? OFFSET ?
+      LIMIT $5 OFFSET $6
       `,
       [
         userId,
@@ -190,6 +193,8 @@ export async function GET(request: NextRequest) {
         offset,
       ]
     );
+
+    const rows = rowsResult.rows;
 
     // ============================================================
     // RESPONSE
@@ -222,7 +227,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 
 
 export async function POST(request: NextRequest) {
@@ -327,23 +331,26 @@ export async function POST(request: NextRequest) {
     // CHECK ORDER
     // ============================================================
 
-    const [orders] = await db.query<RowDataPacket[] & CountRow[]>(
+    const orderResult = await db.query<{ id: number }>(
       `
       SELECT id
       FROM orders
-      WHERE id = ?
-        AND user_id = ?
+      WHERE id = $1
+        AND user_id = $2
         AND order_status = 'DELIVERED'
       LIMIT 1
       `,
       [orderId, userId]
     );
 
+    const orders = orderResult.rows;
+
     if (orders.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "You can only review products from delivered orders",
+          message:
+            "You can only review products from delivered orders",
         },
         { status: 403 }
       );
@@ -353,22 +360,25 @@ export async function POST(request: NextRequest) {
     // CHECK PRODUCT EXISTS IN THIS ORDER
     // ============================================================
 
-    const [orderItems] = await db.query<RowDataPacket[] & CountRow[]>(
+    const orderItemResult = await db.query<{ id: number }>(
       `
       SELECT id
       FROM order_items
-      WHERE order_id = ?
-        AND product_id = ?
+      WHERE order_id = $1
+        AND product_id = $2
       LIMIT 1
       `,
       [orderId, productId]
     );
 
+    const orderItems = orderItemResult.rows;
+
     if (orderItems.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "This product does not belong to the specified order",
+          message:
+            "This product does not belong to the specified order",
         },
         { status: 403 }
       );
@@ -378,17 +388,19 @@ export async function POST(request: NextRequest) {
     // CHECK DUPLICATE REVIEW
     // ============================================================
 
-    const [existingReviews] = await db.query<RowDataPacket[] & CountRow[]>(
+    const existingReviewResult = await db.query<{ id: number }>(
       `
       SELECT id
       FROM product_reviews
-      WHERE user_id = ?
-        AND order_id = ?
-        AND product_id = ?
+      WHERE user_id = $1
+        AND order_id = $2
+        AND product_id = $3
       LIMIT 1
       `,
       [userId, orderId, productId]
     );
+
+    const existingReviews = existingReviewResult.rows;
 
     if (existingReviews.length > 0) {
       return NextResponse.json(
@@ -404,7 +416,7 @@ export async function POST(request: NextRequest) {
     // INSERT REVIEW
     // ============================================================
 
-    const [result] = await db.query<ResultSetHeader>(
+    const result = await db.query<{ id: number }>(
       `
       INSERT INTO product_reviews
       (
@@ -415,7 +427,8 @@ export async function POST(request: NextRequest) {
         review,
         status
       )
-      VALUES (?, ?, ?, ?, ?, 'PENDING')
+      VALUES ($1, $2, $3, $4, $5, 'PENDING')
+      RETURNING id
       `,
       [
         productId,
@@ -426,6 +439,8 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    const reviewId = result.rows[0].id;
+
     // ============================================================
     // RESPONSE
     // ============================================================
@@ -434,7 +449,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message: "Review submitted successfully",
-        review_id: result.insertId,
+        review_id: reviewId,
       },
       { status: 201 }
     );

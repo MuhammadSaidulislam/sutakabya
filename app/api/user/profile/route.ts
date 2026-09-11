@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
+import { RowDataPacket } from "mysql2/promise";
 import jwt from "jsonwebtoken";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 interface JwtPayload {
   id: number;
@@ -39,13 +39,13 @@ export async function GET(req: NextRequest) {
   try {
     const userId = getUserId(req);
 
-   if (!userId) {
-  return new NextResponse(null, {
-    status: 204,
-  });
-}
+    if (!userId) {
+      return new NextResponse(null, {
+        status: 204,
+      });
+    }
 
-    const [rows] = await db.query<User[]>(
+    const result = await db.query<User>(
       `
       SELECT
         id,
@@ -57,11 +57,13 @@ export async function GET(req: NextRequest) {
         status,
         created_at
       FROM customers
-      WHERE id = ?
+      WHERE id = $1
       LIMIT 1
       `,
       [userId]
     );
+
+    const rows = result.rows;
 
     if (!rows.length) {
       return NextResponse.json(
@@ -120,14 +122,14 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    await db.query<ResultSetHeader>(
+    await db.query(
       `
       UPDATE customers
       SET
-        name = ?,
-        gender = ?,
-        profile_image = ?
-      WHERE id = ?
+        name = $1,
+        gender = $2,
+        profile_image = $3
+      WHERE id = $4
       `,
       [
         name.trim(),
@@ -137,7 +139,7 @@ export async function PUT(req: NextRequest) {
       ]
     );
 
-    const [rows] = await db.query<User[]>(
+    const result = await db.query<User>(
       `
       SELECT
         id,
@@ -149,10 +151,12 @@ export async function PUT(req: NextRequest) {
         status,
         created_at
       FROM customers
-      WHERE id = ?
+      WHERE id = $1
       `,
       [userId]
     );
+
+    const rows = result.rows;
 
     return NextResponse.json({
       success: true,

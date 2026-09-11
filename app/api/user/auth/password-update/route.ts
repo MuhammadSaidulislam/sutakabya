@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import db  from "@/lib/db";
+import { User } from "@/types/user";
 
 interface UserTokenPayload {
   id: number;
   name?: string;
 }
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -144,15 +145,17 @@ export async function POST(req: NextRequest) {
     // 5. Find customer
     // =====================================================
 
-    const [users] = await db.query<RowDataPacket[]>(
+    const result = await db.query<User>(
       `
       SELECT id, name, email, phone, password
       FROM customers
-      WHERE id = ?
+      WHERE id = $1
       LIMIT 1
       `,
       [decoded.id]
     );
+
+    const users = result.rows;
 
     if (users.length === 0) {
       return NextResponse.json(
@@ -213,8 +216,8 @@ export async function POST(req: NextRequest) {
     await db.query(
       `
       UPDATE customers
-      SET password = ?
-      WHERE id = ?
+      SET password = $1
+      WHERE id = $2
       `,
       [hashedPassword, user.id]
     );

@@ -1,122 +1,144 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import jwt from "jsonwebtoken";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 interface JwtPayload {
-    id: number;
+  id: number;
 }
 
+interface CustomerAddress {
+  id: number;
+  customer_id: number;
+  label: string | null;
+  name: string;
+  phone: string | null;
+  address: string;
+  division: string | null;
+  district: string;
+  upazila: string | null;
+  zip: string | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CreatedAddress {
+  id: number;
+}
+
+
 export async function POST(req: NextRequest) {
-    try {
-        // ==============================
-        // Get token
-        // ==============================
+  try {
+    // ==============================
+    // Get token
+    // ==============================
 
-        const token = req.cookies.get("user_token")?.value;
+    const token = req.cookies.get("user_token")?.value;
 
-        if (!token) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Unauthorized",
-                },
-                { status: 401 }
-            );
-        }
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        { status: 401 }
+      );
+    }
 
-        // ==============================
-        // Verify token
-        // ==============================
+    // ==============================
+    // Verify token
+    // ==============================
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET!
-        ) as JwtPayload;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as JwtPayload;
 
-        const customerId = decoded.id;
+    const customerId = decoded.id;
 
-        if (!customerId) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Invalid token",
-                },
-                { status: 401 }
-            );
-        }
+    if (!customerId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid token",
+        },
+        { status: 401 }
+      );
+    }
 
-        // ==============================
-        // Request body
-        // ==============================
+    // ==============================
+    // Request body
+    // ==============================
 
-        const body = await req.json();
+    const body = await req.json();
 
-        const {
-            label,
-            name,
-            phone,
-            address,
-            division,
-            district,
-            upazila,
-            zip,
-            is_default = false,
-        } = body;
+    const {
+      label,
+      name,
+      phone,
+      address,
+      division,
+      district,
+      upazila,
+      zip,
+      is_default = false,
+    } = body;
 
-        // ==============================
-        // Validation
-        // ==============================
+    // ==============================
+    // Validation
+    // ==============================
 
-        if (!name || !address || !district) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Name, address and district are required",
-                },
-                { status: 400 }
-            );
-        }
+    if (!name || !address || !district) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Name, address and district are required",
+        },
+        { status: 400 }
+      );
+    }
 
-        // ==============================
-        // Check customer's addresses
-        // ==============================
+    // ==============================
+    // Check customer's addresses
+    // ==============================
 
-        const [existingAddresses] = await db.query<RowDataPacket[]>(
-            `
+    const existingResult = await db.query<{ id: number }>(
+      `
         SELECT id
         FROM customer_addresses
-        WHERE customer_id = ?
+        WHERE customer_id = $1
         LIMIT 1
       `,
-            [customerId]
-        );
+      [customerId]
+    );
 
-        // First address automatically becomes default
-        const isFirstAddress = existingAddresses.length === 0;
-        const makeDefault = isFirstAddress || Boolean(is_default);
+    const existingAddresses = existingResult.rows;
 
-        // ==============================
-        // If default, remove old default
-        // ==============================
+    // First address automatically becomes default
+    const isFirstAddress = existingAddresses.length === 0;
+    const makeDefault = isFirstAddress || Boolean(is_default);
 
-        if (makeDefault) {
-            await db.query(
-                `
+    // ==============================
+    // If default, remove old default
+    // ==============================
+
+    if (makeDefault) {
+      await db.query(
+        `
           UPDATE customer_addresses
-          SET is_default = 0
-          WHERE customer_id = ?
+          SET is_default = false
+          WHERE customer_id = $1
         `,
-                [customerId]
-            );
-        }
+        [customerId]
+      );
+    }
 
-        // ==============================
-        // Insert address
-        // ==============================
+    // ==============================
+    // Insert address
+    // ==============================
 
-        const [result] = await db.query<ResultSetHeader>(
-            `
+    const result = await db.query<CreatedAddress>(
+      `
         INSERT INTO customer_addresses
         (
           customer_id,
@@ -130,164 +152,169 @@ export async function POST(req: NextRequest) {
           zip,
           is_default
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
       `,
-            [
-                customerId,
-                label,
-                name,
-                address,
-                phone,
-                division,
-                district,
-                upazila,
-                zip || null,
-                makeDefault ? 1 : 0,
-            ]
-        );
+      [
+        customerId,
+        label ?? null,
+        name,
+        address,
+        phone ?? null,
+        division ?? null,
+        district,
+        upazila ?? null,
+        zip || null,
+        makeDefault,
+      ]
+    );
 
-        // ==============================
-        // Response
-        // ==============================
+    const addressId = result.rows[0].id;
 
-        return NextResponse.json(
-            {
-                success: true,
-                message: "Address added successfully",
-                data: {
-                    id: result.insertId,
-                    customer_id: customerId,
-                    label,
-                    name,
-                    address,
-                    phone,
-                    upazila,
-                    division,
-                    district,
-                    zip: zip || null,
-                    is_default: makeDefault,
-                },
-            },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error("Add address error:", error);
+    // ==============================
+    // Response
+    // ==============================
 
-        if (error instanceof jwt.JsonWebTokenError) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Invalid or expired token",
-                },
-                { status: 401 }
-            );
-        }
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Address added successfully",
+        data: {
+          id: addressId,
+          customer_id: customerId,
+          label,
+          name,
+          address,
+          phone,
+          upazila,
+          division,
+          district,
+          zip: zip || null,
+          is_default: makeDefault,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Add address error:", error);
 
-        return NextResponse.json(
-            {
-                success: false,
-                message: "Failed to add address",
-            },
-            { status: 500 }
-        );
+    if (error instanceof jwt.JsonWebTokenError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid or expired token",
+        },
+        { status: 401 }
+      );
     }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to add address",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function GET(req: NextRequest) {
-    try {
-        // ==============================
-        // Get token
-        // ==============================
+  try {
+    // ==============================
+    // Get token
+    // ==============================
 
-        const token = req.cookies.get("user_token")?.value;
+    const token = req.cookies.get("user_token")?.value;
 
-        if (!token) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Unauthorized",
-                },
-                { status: 401 }
-            );
-        }
-
-        // ==============================
-        // Verify token
-        // ==============================
-
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET!
-        ) as JwtPayload;
-
-        const customerId = decoded.id;
-
-        if (!customerId) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Invalid token",
-                },
-                { status: 401 }
-            );
-        }
-
-        // ==============================
-        // Get customer addresses
-        // ==============================
-
-        const [addresses] = await db.query<RowDataPacket[]>(
-            `
-            SELECT
-                id,
-                customer_id,
-                label,
-                name,
-                phone,
-                address,
-                division,
-                district,
-                upazila,
-                zip,
-                is_default,
-                created_at,
-                updated_at
-            FROM customer_addresses
-            WHERE customer_id = ?
-            ORDER BY is_default DESC, created_at DESC
-            `,
-            [customerId]
-        );
-
-        // ==============================
-        // Response
-        // ==============================
-
-        return NextResponse.json({
-            success: true,
-            data: addresses,
-        });
-    } catch (error) {
-        console.error("Get address error:", error);
-
-        if (error instanceof jwt.JsonWebTokenError) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Invalid or expired token",
-                },
-                { status: 401 }
-            );
-        }
-
-        return NextResponse.json(
-            {
-                success: false,
-                message: "Failed to fetch addresses",
-            },
-            { status: 500 }
-        );
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        { status: 401 }
+      );
     }
+
+    // ==============================
+    // Verify token
+    // ==============================
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as JwtPayload;
+
+    const customerId = decoded.id;
+
+    if (!customerId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid token",
+        },
+        { status: 401 }
+      );
+    }
+
+    // ==============================
+    // Get customer addresses
+    // ==============================
+
+    const result = await db.query<CustomerAddress>(
+      `
+        SELECT
+          id,
+          customer_id,
+          label,
+          name,
+          phone,
+          address,
+          division,
+          district,
+          upazila,
+          zip,
+          is_default,
+          created_at,
+          updated_at
+        FROM customer_addresses
+        WHERE customer_id = $1
+        ORDER BY is_default DESC, created_at DESC
+      `,
+      [customerId]
+    );
+
+    const addresses = result.rows;
+
+    // ==============================
+    // Response
+    // ==============================
+
+    return NextResponse.json({
+      success: true,
+      data: addresses,
+    });
+  } catch (error) {
+    console.error("Get address error:", error);
+
+    if (error instanceof jwt.JsonWebTokenError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid or expired token",
+        },
+        { status: 401 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to fetch addresses",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -384,16 +411,18 @@ export async function PUT(req: NextRequest) {
         // Check address belongs to customer
         // ==============================
 
-        const [existing] = await db.query<RowDataPacket[]>(
+        const existingResult = await db.query<{ id: number }>(
             `
             SELECT id
             FROM customer_addresses
-            WHERE id = ?
-            AND customer_id = ?
+            WHERE id = $1
+              AND customer_id = $2
             LIMIT 1
             `,
             [id, customerId]
         );
+
+        const existing = existingResult.rows;
 
         if (existing.length === 0) {
             return NextResponse.json(
@@ -414,9 +443,9 @@ export async function PUT(req: NextRequest) {
             await db.query(
                 `
                 UPDATE customer_addresses
-                SET is_default = 0
-                WHERE customer_id = ?
-                AND id != ?
+                SET is_default = false
+                WHERE customer_id = $1
+                  AND id != $2
                 `,
                 [customerId, id]
             );
@@ -430,20 +459,20 @@ export async function PUT(req: NextRequest) {
             `
             UPDATE customer_addresses
             SET
-                label = ?,
-                name = ?,
-                phone = ?,
-                address = ?,
-                division = ?,
-                district = ?,
-                upazila = ?,
-                zip = ?,
-                is_default = ?
-            WHERE id = ?
-            AND customer_id = ?
+                label = $1,
+                name = $2,
+                phone = $3,
+                address = $4,
+                division = $5,
+                district = $6,
+                upazila = $7,
+                zip = $8,
+                is_default = $9
+            WHERE id = $10
+              AND customer_id = $11
             `,
             [
-                label,
+                label ?? null,
                 name,
                 phone,
                 address,
@@ -451,7 +480,7 @@ export async function PUT(req: NextRequest) {
                 district,
                 upazila,
                 zip || null,
-                is_default ? 1 : 0,
+                Boolean(is_default),
                 id,
                 customerId,
             ]
@@ -461,7 +490,7 @@ export async function PUT(req: NextRequest) {
         // Get updated address
         // ==============================
 
-        const [updated] = await db.query<RowDataPacket[]>(
+        const updatedResult = await db.query<CustomerAddress>(
             `
             SELECT
                 id,
@@ -478,12 +507,14 @@ export async function PUT(req: NextRequest) {
                 created_at,
                 updated_at
             FROM customer_addresses
-            WHERE id = ?
-            AND customer_id = ?
+            WHERE id = $1
+              AND customer_id = $2
             LIMIT 1
             `,
             [id, customerId]
         );
+
+        const updated = updatedResult.rows;
 
         return NextResponse.json({
             success: true,
@@ -578,16 +609,21 @@ export async function DELETE(req: NextRequest) {
         // Find address
         // ==============================
 
-        const [addresses] = await db.query<RowDataPacket[]>(
+        const addressResult = await db.query<{
+            id: number;
+            is_default: boolean;
+        }>(
             `
             SELECT id, is_default
             FROM customer_addresses
-            WHERE id = ?
-            AND customer_id = ?
+            WHERE id = $1
+              AND customer_id = $2
             LIMIT 1
             `,
             [id, customerId]
         );
+
+        const addresses = addressResult.rows;
 
         if (addresses.length === 0) {
             return NextResponse.json(
@@ -605,7 +641,7 @@ export async function DELETE(req: NextRequest) {
         // Prevent deleting default address
         // ==============================
 
-        if (Number(address.is_default) === 1) {
+        if (address.is_default) {
             return NextResponse.json(
                 {
                     success: false,
@@ -623,8 +659,8 @@ export async function DELETE(req: NextRequest) {
         await db.query(
             `
             DELETE FROM customer_addresses
-            WHERE id = ?
-            AND customer_id = ?
+            WHERE id = $1
+              AND customer_id = $2
             `,
             [id, customerId]
         );
