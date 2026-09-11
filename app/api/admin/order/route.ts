@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,41 +11,71 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * limit;
 
     const search = searchParams.get("search")?.trim() || "";
-    const paymentStatus = searchParams.get("payment_status")?.trim() || "";
-    const orderStatus = searchParams.get("order_status")?.trim() || "";
+    const paymentStatus =
+      searchParams.get("payment_status")?.trim() || "";
+    const orderStatus =
+      searchParams.get("order_status")?.trim() || "";
 
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
-    // Search
+    // ========================================================
+    // SEARCH
+    // ========================================================
+
     if (search) {
+      const searchValue = `%${search}%`;
+
+      params.push(searchValue);
+      const orderNoParam = `$${params.length}`;
+
+      params.push(searchValue);
+      const customerNameParam = `$${params.length}`;
+
+      params.push(searchValue);
+      const emailParam = `$${params.length}`;
+
+      params.push(searchValue);
+      const phoneParam = `$${params.length}`;
+
       conditions.push(`
         (
-          o.order_no LIKE ?
-          OR u.name LIKE ?
-          OR u.email LIKE ?
-          OR u.phone LIKE ?
+          o.order_no ILIKE ${orderNoParam}
+          OR u.name ILIKE ${customerNameParam}
+          OR u.email ILIKE ${emailParam}
+          OR u.phone ILIKE ${phoneParam}
         )
       `);
+    }
 
-      params.push(
-        `%${search}%`,
-        `%${search}%`,
-        `%${search}%`,
-        `%${search}%`
+    // ========================================================
+    // PAYMENT STATUS FILTER
+    // ========================================================
+
+    if (
+      paymentStatus &&
+      paymentStatus !== "All"
+    ) {
+      params.push(paymentStatus);
+
+      conditions.push(
+        `o.payment_status = $${params.length}`
       );
     }
 
-    // Payment Status Filter
-    if (paymentStatus && paymentStatus !== "All") {
-      conditions.push("o.payment_status = ?");
-      params.push(paymentStatus);
-    }
+    // ========================================================
+    // ORDER STATUS FILTER
+    // ========================================================
 
-    // Order Status Filter
-    if (orderStatus && orderStatus !== "All") {
-      conditions.push("o.order_status = ?");
+    if (
+      orderStatus &&
+      orderStatus !== "All"
+    ) {
       params.push(orderStatus);
+
+      conditions.push(
+        `o.order_status = $${params.length}`
+      );
     }
 
     const whereClause =
@@ -53,7 +83,20 @@ export async function GET(req: NextRequest) {
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
 
-    const [orders] = await db.query<RowDataPacket[]>(
+    // ========================================================
+    // GET ORDERS
+    // ========================================================
+
+    const orderParams = [
+      ...params,
+      limit,
+      offset,
+    ];
+
+    const limitParam = `$${params.length + 1}`;
+    const offsetParam = `$${params.length + 2}`;
+
+    const ordersResult = await db.query(
       `
       SELECT
         o.id,
@@ -109,15 +152,23 @@ export async function GET(req: NextRequest) {
 
       ORDER BY o.created_at DESC
 
-      LIMIT ? OFFSET ?
+      LIMIT ${limitParam}
+      OFFSET ${offsetParam}
       `,
-      [...params, limit, offset]
+      orderParams
     );
 
-    const [countResult] = await db.query<RowDataPacket[]>(
+    const orders = ordersResult.rows;
+
+    // ========================================================
+    // COUNT ORDERS
+    // ========================================================
+
+    const countResult = await db.query(
       `
       SELECT COUNT(*) AS total
       FROM orders o
+
       INNER JOIN customers u
         ON o.user_id = u.id
 
@@ -126,7 +177,13 @@ export async function GET(req: NextRequest) {
       params
     );
 
-    const total = Number(countResult[0].total);
+    const total = Number(
+      countResult.rows[0]?.total ?? 0
+    );
+
+    // ========================================================
+    // RESPONSE
+    // ========================================================
 
     return NextResponse.json({
       success: true,

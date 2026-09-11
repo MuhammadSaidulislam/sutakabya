@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import { RowDataPacket } from "mysql2";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ProductImage } from "@/types/imageProps";
-import { ProductProps, ProductSpecification, ProductTag, ProductVariant, Tag } from "@/types/product";
+import { ProductProps, ProductSpecification, ProductTag, ProductVariant } from "@/types/product";
 import { deleteImage } from "@/lib/delete-image";
+import db from "@/lib/db";
 
 interface ProductImageRow extends RowDataPacket {
   id: number;
@@ -24,7 +24,7 @@ interface ProductTagRow extends RowDataPacket {
 
 // Product create
 export async function POST(req: NextRequest) {
-  let connection;
+  const client = await db.connect();
 
   try {
     await requireAdmin();
@@ -91,22 +91,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    connection = await db.getConnection();
-
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     // Category
 
-    const [category] = await connection.execute<CategoryRow[]>(
+    const categoryResult = await client.query(
       `SELECT id
        FROM categories
-       WHERE id = ?
+       WHERE id = $1
        LIMIT 1`,
       [category_id]
     );
 
-    if (!category.length) {
-      await connection.rollback();
+    if (categoryResult.rows.length === 0) {
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -119,17 +117,17 @@ export async function POST(req: NextRequest) {
 
     // Sub Category
 
-    const [subCategory] = await connection.execute<CategoryRow[]>(
+    const subCategoryResult = await client.query(
       `SELECT id
        FROM sub_categories
-       WHERE id = ?
-       AND category_id = ?
+       WHERE id = $1
+       AND category_id = $2
        LIMIT 1`,
       [sub_category_id, category_id]
     );
 
-    if (!subCategory.length) {
-      await connection.rollback();
+    if (subCategoryResult.rows.length === 0) {
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -142,16 +140,16 @@ export async function POST(req: NextRequest) {
 
     // Duplicate Name
 
-    const [exists] = await connection.execute<ProductRow[]>(
+    const existsResult = await client.query(
       `SELECT id
        FROM products
-       WHERE name = ?
+       WHERE name = $1
        LIMIT 1`,
       [name]
     );
 
-    if (exists.length) {
-      await connection.rollback();
+    if (existsResult.rows.length > 0) {
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -165,16 +163,16 @@ export async function POST(req: NextRequest) {
     // Duplicate Slug
 
     if (slug) {
-      const [slugExists] = await connection.execute<ProductRow[]>(
+      const slugExistsResult = await client.query(
         `SELECT id
          FROM products
-         WHERE slug = ?
+         WHERE slug = $1
          LIMIT 1`,
         [slug]
       );
 
-      if (slugExists.length) {
-        await connection.rollback();
+      if (slugExistsResult.rows.length > 0) {
+        await client.query("ROLLBACK");
 
         return NextResponse.json(
           {
@@ -189,16 +187,16 @@ export async function POST(req: NextRequest) {
     // Duplicate SKU
 
     if (sku) {
-      const [skuExists] = await connection.execute<ProductRow[]>(
+      const skuExistsResult = await client.query(
         `SELECT id
          FROM products
-         WHERE sku = ?
+         WHERE sku = $1
          LIMIT 1`,
         [sku]
       );
 
-      if (skuExists.length) {
-        await connection.rollback();
+      if (skuExistsResult.rows.length > 0) {
+        await client.query("ROLLBACK");
 
         return NextResponse.json(
           {
@@ -212,7 +210,7 @@ export async function POST(req: NextRequest) {
 
     // Insert Product
 
-    const [result] = await connection.execute<ResultSetHeader>(
+    const productResult = await client.query(
       `
       INSERT INTO products
       (
@@ -240,8 +238,10 @@ export async function POST(req: NextRequest) {
       )
       VALUES
       (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18, 0, NOW(), NOW()
       )
+      RETURNING id
       `,
       [
         category_id,
@@ -257,21 +257,21 @@ export async function POST(req: NextRequest) {
         stock,
         low_stock_threshold || 5,
         status,
-        featured ? 1 : 0,
-        best_seller ? 1 : 0,
-        new_arrival ? 1 : 0,
+        Boolean(featured),
+        Boolean(best_seller),
+        Boolean(new_arrival),
         meta_title || null,
         meta_description || null,
       ]
     );
 
-    const productId = result.insertId;
+    const productId = productResult.rows[0].id;
 
     // Product Images
 
     if (Array.isArray(images) && images.length > 0) {
       for (const image of images) {
-        await connection.execute(
+        await client.query(
           `
           INSERT INTO product_images
           (
@@ -280,12 +280,12 @@ export async function POST(req: NextRequest) {
             is_thumbnail,
             created_at
           )
-          VALUES (?, ?, ?, NOW())
+          VALUES ($1, $2, $3, NOW())
           `,
           [
             productId,
             image.image_url,
-            image.is_thumbnail ? 1 : 0,
+            Boolean(image.is_thumbnail),
           ]
         );
       }
@@ -294,10 +294,8 @@ export async function POST(req: NextRequest) {
     // Specifications
 
     if (Array.isArray(specifications) && specifications.length) {
-      for (let i = 0; i < specifications.length; i++) {
-        const spec = specifications[i];
-
-        await connection.execute(
+      for (const spec of specifications) {
+        await client.query(
           `
           INSERT INTO product_specifications
           (
@@ -307,13 +305,12 @@ export async function POST(req: NextRequest) {
             created_at,
             updated_at
           )
-          VALUES (?, ?, ?, NOW(), NOW())
+          VALUES ($1, $2, $3, NOW(), NOW())
           `,
           [
             productId,
             spec.specification_name,
             spec.specification_value,
-            i + 1,
           ]
         );
       }
@@ -323,14 +320,14 @@ export async function POST(req: NextRequest) {
 
     if (Array.isArray(tags) && tags.length) {
       for (const tag of tags) {
-        await connection.execute(
+        await client.query(
           `
           INSERT INTO product_tags
           (
             product_id,
             tag
           )
-          VALUES (?, ?)
+          VALUES ($1, $2)
           `,
           [
             productId,
@@ -344,7 +341,7 @@ export async function POST(req: NextRequest) {
 
     if (Array.isArray(variants) && variants.length) {
       for (const variant of variants) {
-        await connection.execute(
+        await client.query(
           `
           INSERT INTO product_variants
           (
@@ -356,7 +353,7 @@ export async function POST(req: NextRequest) {
             created_at,
             updated_at
           )
-          VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
           `,
           [
             productId,
@@ -369,7 +366,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    await connection.commit();
+    await client.query("COMMIT");
 
     return NextResponse.json(
       {
@@ -380,9 +377,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    if (connection) {
-      await connection.rollback();
-    }
+    await client.query("ROLLBACK");
 
     console.error(error);
 
@@ -394,9 +389,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   } finally {
-    if (connection) {
-      connection.release();
-    }
+    client.release();
   }
 }
 
@@ -421,16 +414,19 @@ export async function GET(req: NextRequest) {
 
     const sort = searchParams.get("sort")?.trim() || "newest";
 
-    const color = searchParams.get("color")?.split(",").filter(Boolean) ?? [];
+    const color =
+      searchParams.get("color")?.split(",").filter(Boolean) ?? [];
 
-    const size = searchParams.get("size")?.split(",").filter(Boolean) ?? [];
+    const size =
+      searchParams.get("size")?.split(",").filter(Boolean) ?? [];
 
-    const categories = searchParams.get("category")?.split(",").filter(Boolean) ?? [];
+    const categories =
+      searchParams.get("category")?.split(",").filter(Boolean) ?? [];
 
-    const subCategories = searchParams.get("subCategory")?.split(",").filter(Boolean) ?? [];
+    const subCategories =
+      searchParams.get("subCategory")?.split(",").filter(Boolean) ?? [];
 
     const maxPrice = Number(searchParams.get("maxPrice")) || 0;
-
 
     // =========================================================
     // Conditions & Parameters
@@ -442,82 +438,94 @@ export async function GET(req: NextRequest) {
     // Search
     // =========================================================
     if (search) {
-      conditions.push("p.name LIKE ?");
       params.push(`%${search}%`);
+
+      conditions.push(`p.name ILIKE $${params.length}`);
     }
 
     // =========================================================
     // Category - using category slug
-    // Example:
-    // ?category=clothes,toys,moms-care,gears
     // =========================================================
     if (categories.length && !categories.includes("All")) {
-      conditions.push(
-        `c.slug IN (${categories.map(() => "?").join(",")})`
-      );
+      const placeholders = categories.map((category) => {
+        params.push(category);
+        return `$${params.length}`;
+      });
 
-      params.push(...categories);
+      conditions.push(`c.slug IN (${placeholders.join(", ")})`);
     }
 
     // =========================================================
     // Sub Category - using subcategory slug
-    // Example:
-    // ?subCategory=baby-fashion,girls-fashion
     // =========================================================
-    if (  subCategories.length &&  !subCategories.includes("All")) {
-      conditions.push(
-        `sc.slug IN (${subCategories.map(() => "?").join(",")})`
-      );
+    if (
+      subCategories.length &&
+      !subCategories.includes("All")
+    ) {
+      const placeholders = subCategories.map((subCategory) => {
+        params.push(subCategory);
+        return `$${params.length}`;
+      });
 
-      params.push(...subCategories);
+      conditions.push(
+        `sc.slug IN (${placeholders.join(", ")})`
+      );
     }
 
     // =========================================================
     // Status
     // =========================================================
     if (status !== "All") {
-      conditions.push("p.status = ?");
       params.push(status);
+
+      conditions.push(`p.status = $${params.length}`);
     }
 
     // =========================================================
     // Color
     // =========================================================
     if (color.length > 0) {
+      const placeholders = color.map((item) => {
+        params.push(item);
+        return `$${params.length}`;
+      });
+
       conditions.push(`
         EXISTS (
           SELECT 1
           FROM product_variants pv
           WHERE pv.product_id = p.id
-            AND pv.color IN (${color.map(() => "?").join(",")})
+            AND pv.color IN (${placeholders.join(", ")})
         )
       `);
-
-      params.push(...color);
     }
 
     // =========================================================
     // Size
     // =========================================================
     if (size.length > 0) {
+      const placeholders = size.map((item) => {
+        params.push(item);
+        return `$${params.length}`;
+      });
+
       conditions.push(`
         EXISTS (
           SELECT 1
           FROM product_variants pv
           WHERE pv.product_id = p.id
-            AND pv.size IN (${size.map(() => "?").join(",")})
+            AND pv.size IN (${placeholders.join(", ")})
         )
       `);
-
-      params.push(...size);
     }
 
     // =========================================================
     // Max Price
     // =========================================================
     if (maxPrice > 0) {
-      conditions.push("p.price <= ?");
       params.push(maxPrice);
+
+      conditions.push(`p.price <= $${params.length}`);
     }
 
     // =========================================================
@@ -555,7 +563,7 @@ export async function GET(req: NextRequest) {
     // =========================================================
     // Count Products
     // =========================================================
-    const [countResult] = await db.query<RowDataPacket[]>(
+    const countResult = await db.query(
       `
         SELECT COUNT(*) AS total
 
@@ -572,14 +580,16 @@ export async function GET(req: NextRequest) {
       params
     );
 
-    const total = Number(countResult[0]?.total ?? 0);
+    const total = Number(
+      countResult.rows[0]?.total ?? 0
+    );
 
     // =========================================================
     // Fetch Products
     // =========================================================
-    const [products] = await db.query<
-      (ProductProps & RowDataPacket)[]
-    >(
+    const productParams = [...params, limit, offset];
+
+    const productsResult = await db.query<ProductProps>(
       `
         SELECT
           p.id,
@@ -644,40 +654,43 @@ export async function GET(req: NextRequest) {
 
         ${orderBy}
 
-        LIMIT ? OFFSET ?
+        LIMIT $${productParams.length - 1}
+        OFFSET $${productParams.length}
       `,
-      [...params, limit, offset]
+      productParams
     );
+
+    const products = productsResult.rows;
 
     // =========================================================
     // Related Data
     // =========================================================
-    let images: (ProductImage & RowDataPacket)[] = [];
+    let images: ProductImage[] = [];
 
-    let specifications: (
-      ProductSpecification & RowDataPacket
-    )[] = [];
+    let specifications: ProductSpecification[] = [];
 
-    let tags: (ProductTag & RowDataPacket)[] = [];
+    let tags: ProductTag[] = [];
 
-    let variants: (ProductVariant & RowDataPacket)[] = [];
+    let variants: ProductVariant[] = [];
 
     // =========================================================
     // Fetch related product data
     // =========================================================
     if (products.length > 0) {
-      const productIds = products.map((product) => product.id);
+      const productIds = products.map(
+        (product) => product.id
+      );
 
-      const placeholders = productIds
-        .map(() => "?")
-        .join(",");
+      const productPlaceholders = productIds.map(
+        (_, index) => `$${index + 1}`
+      );
+
+      const productIdParams = productIds;
 
       // =======================================================
       // Images
       // =======================================================
-      const [imageRows] = await db.query<
-        (ProductImage & RowDataPacket)[]
-      >(
+      const imageResult = await db.query<ProductImage>(
         `
           SELECT
             id,
@@ -687,43 +700,40 @@ export async function GET(req: NextRequest) {
 
           FROM product_images
 
-          WHERE product_id IN (${placeholders})
+          WHERE product_id IN (${productPlaceholders.join(", ")})
         `,
-        productIds
+        productIdParams
       );
 
-      images = imageRows;
+      images = imageResult.rows;
 
       // =======================================================
       // Specifications
       // =======================================================
-      const [specificationRows] = await db.query<
-        (ProductSpecification & RowDataPacket)[]
-      >(
-        `
-          SELECT
-            id,
-            product_id,
-            specification_name,
-            specification_value
+      const specificationResult =
+        await db.query<ProductSpecification>(
+          `
+            SELECT
+              id,
+              product_id,
+              specification_name,
+              specification_value
 
-          FROM product_specifications
+            FROM product_specifications
 
-          WHERE product_id IN (${placeholders})
+            WHERE product_id IN (${productPlaceholders.join(", ")})
 
-          ORDER BY created_at
-        `,
-        productIds
-      );
+            ORDER BY created_at
+          `,
+          productIdParams
+        );
 
-      specifications = specificationRows;
+      specifications = specificationResult.rows;
 
       // =======================================================
       // Tags
       // =======================================================
-      const [tagRows] = await db.query<
-        (ProductTag & RowDataPacket)[]
-      >(
+      const tagResult = await db.query<ProductTag>(
         `
           SELECT
             id,
@@ -732,38 +742,37 @@ export async function GET(req: NextRequest) {
 
           FROM product_tags
 
-          WHERE product_id IN (${placeholders})
+          WHERE product_id IN (${productPlaceholders.join(", ")})
         `,
-        productIds
+        productIdParams
       );
 
-      tags = tagRows;
+      tags = tagResult.rows;
 
       // =======================================================
       // Variants
       // =======================================================
-      const [variantRows] = await db.query<
-        (ProductVariant & RowDataPacket)[]
-      >(
-        `
-          SELECT
-            id,
-            product_id,
-            sku,
-            color,
-            size,
-            stock,
-            created_at,
-            updated_at
+      const variantResult =
+        await db.query<ProductVariant>(
+          `
+            SELECT
+              id,
+              product_id,
+              sku,
+              color,
+              size,
+              stock,
+              created_at,
+              updated_at
 
-          FROM product_variants
+            FROM product_variants
 
-          WHERE product_id IN (${placeholders})
-        `,
-        productIds
-      );
+            WHERE product_id IN (${productPlaceholders.join(", ")})
+          `,
+          productIdParams
+        );
 
-      variants = variantRows;
+      variants = variantResult.rows;
     }
 
     // =========================================================
@@ -794,17 +803,17 @@ export async function GET(req: NextRequest) {
     // Fetch Filter Data In Parallel
     // =========================================================
     const [
-      [categoryRows],
-      [subCategoryRows],
-      [sizeRows],
-      [colorRows],
-      [tagRows],
-      [priceRows],
+      categoryResult,
+      subCategoryResult,
+      sizeResult,
+      colorResult,
+      tagResult,
+      priceResult,
     ] = await Promise.all([
       // =======================================================
       // Categories
       // =======================================================
-      db.query<RowDataPacket[]>(`
+      db.query(`
         SELECT
           id,
           name,
@@ -818,7 +827,7 @@ export async function GET(req: NextRequest) {
       // =======================================================
       // Sub Categories
       // =======================================================
-      db.query<RowDataPacket[]>(`
+      db.query(`
         SELECT
           id,
           category_id,
@@ -833,7 +842,7 @@ export async function GET(req: NextRequest) {
       // =======================================================
       // Sizes
       // =======================================================
-      db.query<RowDataPacket[]>(`
+      db.query(`
         SELECT DISTINCT
           size
 
@@ -848,7 +857,7 @@ export async function GET(req: NextRequest) {
       // =======================================================
       // Colors
       // =======================================================
-      db.query<RowDataPacket[]>(`
+      db.query(`
         SELECT DISTINCT
           color
 
@@ -863,7 +872,7 @@ export async function GET(req: NextRequest) {
       // =======================================================
       // Tags
       // =======================================================
-      db.query<RowDataPacket[]>(`
+      db.query(`
         SELECT DISTINCT
           tag
 
@@ -878,14 +887,21 @@ export async function GET(req: NextRequest) {
       // =======================================================
       // Price Range
       // =======================================================
-      db.query<RowDataPacket[]>(`
+      db.query(`
         SELECT
-          MIN(price) AS minPrice,
-          MAX(price) AS maxPrice
+          MIN(price) AS "minPrice",
+          MAX(price) AS "maxPrice"
 
         FROM products
       `),
     ]);
+
+    const categoryRows = categoryResult.rows;
+    const subCategoryRows = subCategoryResult.rows;
+    const sizeRows = sizeResult.rows;
+    const colorRows = colorResult.rows;
+    const tagRows = tagResult.rows;
+    const priceRows = priceResult.rows;
 
     // =========================================================
     // Build Category Options
@@ -895,7 +911,8 @@ export async function GET(req: NextRequest) {
 
       sub_categories: subCategoryRows.filter(
         (subCategory) =>
-          subCategory.category_id === category.id
+          Number(subCategory.category_id) ===
+          Number(category.id)
       ),
     }));
 
@@ -954,10 +971,17 @@ export async function DELETE(req: NextRequest) {
     const id = Number(searchParams.get("id"));
 
     // Check product exists
-    const [product] = await db.execute<ProductRow[]>(
-      "SELECT id FROM products WHERE id = ? LIMIT 1",
+    const productResult = await db.query<ProductRow>(
+      `
+        SELECT id
+        FROM products
+        WHERE id = $1
+        LIMIT 1
+      `,
       [id]
     );
+
+    const product = productResult.rows;
 
     if (product.length === 0) {
       return NextResponse.json(
@@ -970,14 +994,18 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Get all images
-    const [images] = await db.execute<(ProductImage & RowDataPacket)[]>(
+    const imageResult = await db.query<ProductImage>(
       `
-      SELECT id, image_url
-      FROM product_images
-      WHERE product_id = ?
+        SELECT
+          id,
+          image_url
+        FROM product_images
+        WHERE product_id = $1
       `,
       [id]
     );
+
+    const images = imageResult.rows;
 
     // Delete image files
     for (const image of images) {
@@ -985,20 +1013,30 @@ export async function DELETE(req: NextRequest) {
         try {
           await deleteImage(image.image_url);
         } catch (error) {
-          console.error("Failed to delete image:", image.image_url, error);
+          console.error(
+            "Failed to delete image:",
+            image.image_url,
+            error
+          );
         }
       }
     }
 
     // Delete image records
-    await db.execute<ResultSetHeader>(
-      "DELETE FROM product_images WHERE product_id = ?",
+    await db.query(
+      `
+        DELETE FROM product_images
+        WHERE product_id = $1
+      `,
       [id]
     );
 
     // Delete product
-    await db.execute<ResultSetHeader>(
-      "DELETE FROM products WHERE id = ?",
+    await db.query(
+      `
+        DELETE FROM products
+        WHERE id = $1
+      `,
       [id]
     );
 
@@ -1021,7 +1059,7 @@ export async function DELETE(req: NextRequest) {
 
 // Update product
 export async function PUT(req: NextRequest) {
-  let connection;
+  const client = await db.connect();
 
   try {
     await requireAdmin();
@@ -1063,7 +1101,7 @@ export async function PUT(req: NextRequest) {
       images = [],
       specifications = [],
       tags = [],
-      variants = []
+      variants = [],
     } = body;
 
     if (
@@ -1087,17 +1125,25 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    connection = await db.getConnection();
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
+    // =========================================================
     // Product exists
-    const [product] = await connection.execute<ProductRow[]>(
-      "SELECT id FROM products WHERE id = ? LIMIT 1",
+    // =========================================================
+    const productResult = await client.query<ProductRow>(
+      `
+        SELECT id
+        FROM products
+        WHERE id = $1
+        LIMIT 1
+      `,
       [productId]
     );
 
+    const product = productResult.rows;
+
     if (!product.length) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -1108,14 +1154,23 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // =========================================================
     // Category exists
-    const [category] = await connection.execute<CategoryRow[]>(
-      "SELECT id FROM categories WHERE id = ? LIMIT 1",
+    // =========================================================
+    const categoryResult = await client.query<CategoryRow>(
+      `
+        SELECT id
+        FROM categories
+        WHERE id = $1
+        LIMIT 1
+      `,
       [category_id]
     );
 
+    const category = categoryResult.rows;
+
     if (!category.length) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -1126,20 +1181,24 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // =========================================================
     // Duplicate product name (except current product)
-    const [exists] = await connection.execute<ProductRow[]>(
+    // =========================================================
+    const existsResult = await client.query<ProductRow>(
       `
-      SELECT id
-      FROM products
-      WHERE name = ?
-      AND id != ?
-      LIMIT 1
+        SELECT id
+        FROM products
+        WHERE name = $1
+          AND id != $2
+        LIMIT 1
       `,
       [name, productId]
     );
 
+    const exists = existsResult.rows;
+
     if (exists.length) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -1150,30 +1209,32 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // =========================================================
     // Update product
-    await connection.execute<ResultSetHeader>(
+    // =========================================================
+    await client.query(
       `
-      UPDATE products
-      SET
-        category_id=?,
-        name=?,
-        slug=?,
-        sku=?,
-        short_description=?,
-        description=?,
-        cost_price=?,
-        offer_price=?,
-        price=?,
-        stock=?,
-        low_stock_threshold=?,
-        meta_title=?,
-        meta_description=?,
-        featured=?,
-        best_seller=?,
-        new_arrival=?,
-        status=?,
-        updated_at=NOW()
-      WHERE id=?
+        UPDATE products
+        SET
+          category_id = $1,
+          name = $2,
+          slug = $3,
+          sku = $4,
+          short_description = $5,
+          description = $6,
+          cost_price = $7,
+          offer_price = $8,
+          price = $9,
+          stock = $10,
+          low_stock_threshold = $11,
+          meta_title = $12,
+          meta_description = $13,
+          featured = $14,
+          best_seller = $15,
+          new_arrival = $16,
+          status = $17,
+          updated_at = NOW()
+        WHERE id = $18
       `,
       [
         category_id,
@@ -1189,121 +1250,154 @@ export async function PUT(req: NextRequest) {
         low_stock_threshold,
         meta_title,
         meta_description,
-        featured,
-        best_seller,
-        new_arrival,
+        Boolean(featured),
+        Boolean(best_seller),
+        Boolean(new_arrival),
         status,
         productId,
       ]
     );
 
+    // =========================================================
     // Existing DB images
-    const [dbImages] = await connection.execute<ProductImageRow[]>(
+    // =========================================================
+    const dbImagesResult = await client.query<ProductImageRow>(
       `
-      SELECT id
-      FROM product_images
-      WHERE product_id=?
+        SELECT id
+        FROM product_images
+        WHERE product_id = $1
       `,
       [productId]
     );
+
+    const dbImages = dbImagesResult.rows;
 
     const dbIds = dbImages.map((img) => img.id);
 
     const requestIds = (images as ProductImage[])
       .map((img) => img.id)
-      .filter((id): id is number => id !== undefined);
+      .filter(
+        (id): id is number => id !== undefined
+      );
 
+    // =========================================================
     // Delete removed images
-    const deleteIds = dbIds.filter((id) => !requestIds.includes(id));
+    // =========================================================
+    const deleteIds = dbIds.filter(
+      (id) => !requestIds.includes(id)
+    );
 
     if (deleteIds.length > 0) {
-      await connection.execute(
+      const placeholders = deleteIds.map(
+        (_, index) => `$${index + 1}`
+      );
+
+      await client.query(
         `
-        DELETE FROM product_images
-        WHERE id IN (${deleteIds.map(() => "?").join(",")})
+          DELETE FROM product_images
+          WHERE id IN (${placeholders.join(", ")})
         `,
         deleteIds
       );
     }
 
-    // Update existing / Insert new
+    // =========================================================
+    // Update existing / Insert new images
+    // =========================================================
     for (const image of images as ProductImage[]) {
       if (image.id) {
-        await connection.execute(
+        await client.query(
           `
-          UPDATE product_images
-          SET
-            image_url=?,
-            is_thumbnail=?
-          WHERE id=?
+            UPDATE product_images
+            SET
+              image_url = $1,
+              is_thumbnail = $2
+            WHERE id = $3
           `,
           [
             image.image_url,
-            image.is_thumbnail ? 1 : 0,
+            Boolean(image.is_thumbnail),
             image.id,
           ]
         );
       } else {
-        await connection.execute(
+        await client.query(
           `
-          INSERT INTO product_images
-          (
-            product_id,
-            image_url,
-            is_thumbnail,
-            created_at
-          )
-          VALUES (?, ?, ?, NOW())
+            INSERT INTO product_images
+            (
+              product_id,
+              image_url,
+              is_thumbnail,
+              created_at
+            )
+            VALUES ($1, $2, $3, NOW())
           `,
           [
             productId,
             image.image_url,
-            image.is_thumbnail ? 1 : 0,
+            Boolean(image.is_thumbnail),
           ]
         );
       }
     }
 
-
-    // Specifications 
-    const [dbSpecifications] = await connection.execute<ProductImageRow[]>(
-      `
-  SELECT id
-  FROM product_specifications
-  WHERE product_id = ?
-  `,
-      [productId]
-    );
-    const dbSpecificationIds = dbSpecifications.map((s) => s.id);
-
-    const requestSpecificationIds = specifications.map((s: ProductSpecification) => s.id)
-      .filter((id: number | undefined): id is number => id !== undefined);
-
-    const deleteSpecificationIds = dbSpecificationIds.filter(
-      (id) => !requestSpecificationIds.includes(id)
-    );
-    if (deleteSpecificationIds.length > 0) {
-      await connection.execute(
+    // =========================================================
+    // Specifications
+    // =========================================================
+    const dbSpecificationsResult =
+      await client.query<ProductTagRow>(
         `
-    DELETE FROM product_specifications
-    WHERE id IN (${deleteSpecificationIds.map(() => "?").join(",")})
-    `,
+          SELECT id
+          FROM product_specifications
+          WHERE product_id = $1
+        `,
+        [productId]
+      );
+
+    const dbSpecifications =
+      dbSpecificationsResult.rows;
+
+    const dbSpecificationIds =
+      dbSpecifications.map((specification) => specification.id);
+
+    const requestSpecificationIds =
+      (specifications as ProductSpecification[])
+        .map((specification) => specification.id)
+        .filter(
+          (id): id is number => id !== undefined
+        );
+
+    const deleteSpecificationIds =
+      dbSpecificationIds.filter(
+        (id) => !requestSpecificationIds.includes(id)
+      );
+
+    if (deleteSpecificationIds.length > 0) {
+      const placeholders = deleteSpecificationIds.map(
+        (_, index) => `$${index + 1}`
+      );
+
+      await client.query(
+        `
+          DELETE FROM product_specifications
+          WHERE id IN (${placeholders.join(", ")})
+        `,
         deleteSpecificationIds
       );
     }
 
-    for (const specification of specifications) {
+    for (const specification of specifications as ProductSpecification[]) {
       if (specification.id) {
         // Update
-        await connection.execute(
+        await client.query(
           `
-      UPDATE product_specifications
-      SET
-        specification_name = ?,
-        specification_value = ?,
-        updated_at = NOW()
-      WHERE id = ?
-      `,
+            UPDATE product_specifications
+            SET
+              specification_name = $1,
+              specification_value = $2,
+              updated_at = NOW()
+            WHERE id = $3
+          `,
           [
             specification.specification_name,
             specification.specification_value,
@@ -1312,17 +1406,17 @@ export async function PUT(req: NextRequest) {
         );
       } else {
         // Insert
-        await connection.execute(
+        await client.query(
           `
-      INSERT INTO product_specifications
-      (
-        product_id,
-        specification_name,
-        specification_value,
-        created_at
-      )
-      VALUES (?, ?, ?, NOW())
-      `,
+            INSERT INTO product_specifications
+            (
+              product_id,
+              specification_name,
+              specification_value,
+              created_at
+            )
+            VALUES ($1, $2, $3, NOW())
+          `,
           [
             productId,
             specification.specification_name,
@@ -1332,43 +1426,61 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    // =========================================================
     // Tags
-    const [dbTags] = await connection.execute<ProductTagRow[]>(
-      `
-  SELECT id
-  FROM product_tags
-  WHERE product_id = ?
-  `,
-      [productId]
+    // =========================================================
+    const dbTagsResult =
+      await client.query<ProductTagRow>(
+        `
+          SELECT id
+          FROM product_tags
+          WHERE product_id = $1
+        `,
+        [productId]
+      );
+
+    const dbTags = dbTagsResult.rows;
+
+    const dbTagIds = dbTags.map((tag) => tag.id);
+
+    const requestTagIds =
+      (tags as ProductTag[])
+        .map((tag) => tag.id)
+        .filter(
+          (id): id is number => id !== undefined
+        );
+
+    const deleteTagIds = dbTagIds.filter(
+      (id) => !requestTagIds.includes(id)
     );
 
-    const dbTagIds = dbTags.map((t) => t.id);
-
-    const requestTagIds = tags.map((t: ProductTag) => t.id)
-      .filter((id: number | undefined): id is number => id !== undefined);
-
-    const deleteTagIds = dbTagIds.filter((id) => !requestTagIds.includes(id));
-
     if (deleteTagIds.length > 0) {
-      await connection.execute(
+      const placeholders = deleteTagIds.map(
+        (_, index) => `$${index + 1}`
+      );
+
+      await client.query(
         `
-    DELETE FROM product_tags
-    WHERE id IN (${deleteTagIds.map(() => "?").join(",")})
-    `,
+          DELETE FROM product_tags
+          WHERE id IN (${placeholders.join(", ")})
+        `,
         deleteTagIds
       );
     }
+
     for (const tag of tags as ProductTag[]) {
-      if (!tag.tag?.trim()) continue;
+      if (!tag.tag?.trim()) {
+        continue;
+      }
 
       if (tag.id) {
         // Update
-        await connection.execute(
+        await client.query(
           `
-      UPDATE product_tags
-      SET tag = ?
-      WHERE id = ?
-      `,
+            UPDATE product_tags
+            SET tag = $1
+            WHERE id = $2
+          `,
           [
             tag.tag.trim(),
             tag.id,
@@ -1376,15 +1488,15 @@ export async function PUT(req: NextRequest) {
         );
       } else {
         // Insert
-        await connection.execute(
+        await client.query(
           `
-      INSERT INTO product_tags
-      (
-        product_id,
-        tag
-      )
-      VALUES (?, ?)
-      `,
+            INSERT INTO product_tags
+            (
+              product_id,
+              tag
+            )
+            VALUES ($1, $2)
+          `,
           [
             productId,
             tag.tag.trim(),
@@ -1393,35 +1505,50 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    // =========================================================
     // Variants
-    const [dbVariants] = await connection.execute<ProductImageRow[]>(
-      `
-  SELECT id
-  FROM product_variants
-  WHERE product_id = ?
-  `,
-      [productId]
+    // =========================================================
+    const dbVariantsResult =
+      await client.query<ProductTagRow>(
+        `
+          SELECT id
+          FROM product_variants
+          WHERE product_id = $1
+        `,
+        [productId]
+      );
+
+    const dbVariants = dbVariantsResult.rows;
+
+    const dbVariantIds = dbVariants.map(
+      (variant) => variant.id
     );
 
-    const dbVariantIds = dbVariants.map((v) => v.id);
-
-    const requestVariantIds = (variants as ProductVariant[])
-      .map((v) => v.id)
-      .filter((id): id is number => id !== undefined);
+    const requestVariantIds =
+      (variants as ProductVariant[])
+        .map((variant) => variant.id)
+        .filter(
+          (id): id is number => id !== undefined
+        );
 
     const deleteVariantIds = dbVariantIds.filter(
       (id) => !requestVariantIds.includes(id)
     );
 
     if (deleteVariantIds.length > 0) {
-      await connection.execute(
+      const placeholders = deleteVariantIds.map(
+        (_, index) => `$${index + 1}`
+      );
+
+      await client.query(
         `
-    DELETE FROM product_variants
-    WHERE id IN (${deleteVariantIds.map(() => "?").join(",")})
-    `,
+          DELETE FROM product_variants
+          WHERE id IN (${placeholders.join(", ")})
+        `,
         deleteVariantIds
       );
     }
+
     for (const variant of variants as ProductVariant[]) {
       if (
         !variant.color &&
@@ -1433,17 +1560,17 @@ export async function PUT(req: NextRequest) {
 
       if (variant.id) {
         // Update
-        await connection.execute(
+        await client.query(
           `
-      UPDATE product_variants
-      SET
-        sku = ?,
-        color = ?,
-        size = ?,
-        stock = ?,
-        updated_at = NOW()
-      WHERE id = ?
-      `,
+            UPDATE product_variants
+            SET
+              sku = $1,
+              color = $2,
+              size = $3,
+              stock = $4,
+              updated_at = NOW()
+            WHERE id = $5
+          `,
           [
             variant.sku || null,
             variant.color || null,
@@ -1454,19 +1581,19 @@ export async function PUT(req: NextRequest) {
         );
       } else {
         // Insert
-        await connection.execute(
+        await client.query(
           `
-      INSERT INTO product_variants
-      (
-        product_id,
-        sku,
-        color,
-        size,
-        stock,
-        created_at
-      )
-      VALUES (?, ?, ?, ?, ?, NOW())
-      `,
+            INSERT INTO product_variants
+            (
+              product_id,
+              sku,
+              color,
+              size,
+              stock,
+              created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, NOW())
+          `,
           [
             productId,
             variant.sku || null,
@@ -1478,9 +1605,10 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-
-
-    await connection.commit();
+    // =========================================================
+    // Commit
+    // =========================================================
+    await client.query("COMMIT");
 
     return NextResponse.json(
       {
@@ -1490,9 +1618,7 @@ export async function PUT(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    if (connection) {
-      await connection.rollback();
-    }
+    await client.query("ROLLBACK");
 
     console.error(error);
 
@@ -1504,6 +1630,6 @@ export async function PUT(req: NextRequest) {
       { status: 500 }
     );
   } finally {
-    connection?.release();
+    client.release();
   }
 }

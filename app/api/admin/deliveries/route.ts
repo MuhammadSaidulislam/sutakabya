@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 interface Delivery extends RowDataPacket {
   id: number;
@@ -71,52 +71,59 @@ export async function GET(req: NextRequest) {
 
     // Search
     if (search) {
-      conditions.push(`
-        (
-          o.order_no LIKE ?
-          OR d.courier_company LIKE ?
-          OR CAST(d.order_id AS CHAR) LIKE ?
-          OR c.name LIKE ?
-          OR c.phone LIKE ?
-        )
-      `);
-
       const searchValue = `%${search}%`;
 
-      values.push(
-        searchValue,
-        searchValue,
-        searchValue,
-        searchValue,
-        searchValue
-      );
+      values.push(searchValue);
+      const orderNoParam = `$${values.length}`;
+
+      values.push(searchValue);
+      const courierParam = `$${values.length}`;
+
+      values.push(searchValue);
+      const orderIdParam = `$${values.length}`;
+
+      values.push(searchValue);
+      const customerNameParam = `$${values.length}`;
+
+      values.push(searchValue);
+      const phoneParam = `$${values.length}`;
+
+      conditions.push(`
+        (
+          o.order_no ILIKE ${orderNoParam}
+          OR d.courier_company ILIKE ${courierParam}
+          OR CAST(d.order_id AS TEXT) ILIKE ${orderIdParam}
+          OR c.name ILIKE ${customerNameParam}
+          OR c.phone ILIKE ${phoneParam}
+        )
+      `);
     }
 
     // Payment status
     if (paymentStatus) {
-      conditions.push(`
-        o.payment_status = ?
-      `);
-
       values.push(paymentStatus);
+
+      conditions.push(
+        `o.payment_status = $${values.length}`
+      );
     }
 
     // Order status
     if (orderStatus) {
-      conditions.push(`
-        o.order_status = ?
-      `);
-
       values.push(orderStatus);
+
+      conditions.push(
+        `o.order_status = $${values.length}`
+      );
     }
 
     // Delivery status
     if (deliveryStatus) {
-      conditions.push(`
-        d.status = ?
-      `);
-
       values.push(deliveryStatus);
+
+      conditions.push(
+        `d.status = $${values.length}`
+      );
     }
 
     const whereClause =
@@ -128,26 +135,25 @@ export async function GET(req: NextRequest) {
     // GET TOTAL
     // ============================================================
 
-    const [countRows] =
-      await db.query<RowDataPacket[]>(
-        `
-        SELECT COUNT(*) AS total
+    const countResult = await db.query(
+      `
+      SELECT COUNT(*) AS total
 
-        FROM deliveries d
+      FROM deliveries d
 
-        INNER JOIN orders o
-          ON o.id = d.order_id
+      INNER JOIN orders o
+        ON o.id = d.order_id
 
-        LEFT JOIN customers c
-          ON c.id = o.user_id
+      LEFT JOIN customers c
+        ON c.id = o.user_id
 
-        ${whereClause}
-        `,
-        values
-      );
+      ${whereClause}
+      `,
+      values
+    );
 
     const total = Number(
-      countRows[0]?.total || 0
+      countResult.rows[0]?.total || 0
     );
 
     const totalPages =
@@ -159,54 +165,61 @@ export async function GET(req: NextRequest) {
     // GET DELIVERIES
     // ============================================================
 
-    const [rows] =
-      await db.query<RowDataPacket[]>(
-        `
-        SELECT
-          d.id,
-          d.order_id,
-          d.courier_company,
-          d.delivery_date,
-          d.status AS delivery_status,
+    const dataValues = [
+      ...values,
+      limit,
+      offset,
+    ];
 
-          o.order_no,
-          o.order_status,
-          o.payment_status,
+    const limitParam = `$${values.length + 1}`;
+    const offsetParam = `$${values.length + 2}`;
 
-          c.id AS customer_id,
-          c.name AS customer_name,
-          c.phone AS customer_phone,
+    const deliveriesResult = await db.query(
+      `
+      SELECT
+        d.id,
+        d.order_id,
+        d.courier_company,
+        d.delivery_date,
+        d.status AS delivery_status,
 
-          o.shipping_address,
+        o.order_no,
+        o.order_status,
+        o.payment_status,
 
-          o.subtotal,
-          o.shipping_rate,
-          o.total,
+        c.id AS customer_id,
+        c.name AS customer_name,
+        c.phone AS customer_phone,
 
-          o.ordered_at,
-          d.created_at,
-          d.updated_at
+        o.shipping_address,
 
-        FROM deliveries d
+        o.subtotal,
+        o.shipping_rate,
+        o.total,
 
-        INNER JOIN orders o
-          ON o.id = d.order_id
+        o.ordered_at,
+        d.created_at,
+        d.updated_at
 
-        LEFT JOIN customers c
-          ON c.id = o.user_id
+      FROM deliveries d
 
-        ${whereClause}
+      INNER JOIN orders o
+        ON o.id = d.order_id
 
-        ORDER BY d.id DESC
+      LEFT JOIN customers c
+        ON c.id = o.user_id
 
-        LIMIT ? OFFSET ?
-        `,
-        [
-          ...values,
-          limit,
-          offset,
-        ]
-      );
+      ${whereClause}
+
+      ORDER BY d.id DESC
+
+      LIMIT ${limitParam}
+      OFFSET ${offsetParam}
+      `,
+      dataValues
+    );
+
+    const rows = deliveriesResult.rows;
 
     // ============================================================
     // RESPONSE
@@ -233,8 +246,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Failed to fetch deliveries",
+        message: "Failed to fetch deliveries",
       },
       { status: 500 }
     );
@@ -294,15 +306,17 @@ export async function POST(request: NextRequest) {
     // CHECK ORDER
     // ============================================================
 
-    const [orders] = await db.query<RowDataPacket[]>(
+    const ordersResult = await db.query(
       `
       SELECT id, order_status
       FROM orders
-      WHERE id = ?
+      WHERE id = $1
       LIMIT 1
       `,
       [order_id]
     );
+
+    const orders = ordersResult.rows;
 
     if (orders.length === 0) {
       return NextResponse.json(
@@ -342,15 +356,17 @@ export async function POST(request: NextRequest) {
     // CHECK EXISTING DELIVERY
     // ============================================================
 
-    const [existing] = await db.query<RowDataPacket[]>(
+    const existingResult = await db.query(
       `
       SELECT id
       FROM deliveries
-      WHERE order_id = ?
+      WHERE order_id = $1
       LIMIT 1
       `,
       [order_id]
     );
+
+    const existing = existingResult.rows;
 
     if (existing.length > 0) {
       return NextResponse.json(
@@ -366,7 +382,7 @@ export async function POST(request: NextRequest) {
     // CREATE DELIVERY
     // ============================================================
 
-    const [result] = await db.query<ResultSetHeader>(
+    const result = await db.query<{ id: number }>(
       `
       INSERT INTO deliveries
         (
@@ -375,7 +391,8 @@ export async function POST(request: NextRequest) {
           delivery_date,
           status
         )
-      VALUES (?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
       `,
       [
         order_id,
@@ -384,6 +401,8 @@ export async function POST(request: NextRequest) {
         status,
       ]
     );
+
+    const deliveryId = result.rows[0].id;
 
     // ============================================================
     // UPDATE ORDER STATUS
@@ -415,8 +434,8 @@ export async function POST(request: NextRequest) {
       await db.query(
         `
         UPDATE orders
-        SET order_status = ?
-        WHERE id = ?
+        SET order_status = $1
+        WHERE id = $2
         `,
         [newOrderStatus, order_id]
       );
@@ -426,7 +445,7 @@ export async function POST(request: NextRequest) {
     // GET CREATED DELIVERY
     // ============================================================
 
-    const [rows] = await db.query<Delivery[]>(
+    const deliveryResult = await db.query<Delivery>(
       `
       SELECT
         id,
@@ -437,10 +456,12 @@ export async function POST(request: NextRequest) {
         created_at,
         updated_at
       FROM deliveries
-      WHERE id = ?
+      WHERE id = $1
       `,
-      [result.insertId]
+      [deliveryId]
     );
+
+    const rows = deliveryResult.rows;
 
     return NextResponse.json(
       {

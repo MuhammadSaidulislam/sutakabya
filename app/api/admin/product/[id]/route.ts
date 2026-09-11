@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 import { ProductProps, ProductSpecification, ProductTag, ProductVariant } from "@/types/product";
 import { ProductImage } from "@/types/imageProps";
 
@@ -12,8 +12,23 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Product
-    const [products] = await db.query<(ProductProps & RowDataPacket)[]>(
+    const productId = Number(id);
+
+    if (!productId || Number.isNaN(productId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid product ID",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================
+    // PRODUCT
+    // ============================================================
+
+    const productResult = await db.query<ProductProps>(
       `
       SELECT
         p.id,
@@ -46,8 +61,8 @@ export async function GET(
         p.meta_title,
         p.meta_description,
 
-        CAST(COALESCE(r.average_rating, 0) AS DECIMAL(3,1)) AS average_rating,
-        CAST(COALESCE(r.rating_count, 0) AS UNSIGNED) AS rating_count,
+        COALESCE(r.average_rating, 0)::numeric(3,1) AS average_rating,
+        COALESCE(r.rating_count, 0)::integer AS rating_count,
 
         p.created_at,
         p.updated_at
@@ -61,21 +76,24 @@ export async function GET(
         ON sc.id = p.sub_category_id
 
       LEFT JOIN (
-      SELECT
-        product_id,
-        ROUND(AVG(rating), 1) AS average_rating,
-        COUNT(*) AS rating_count
-      FROM product_reviews
-      WHERE status = 'APPROVED'
-      GROUP BY product_id) r
-      ON r.product_id = p.id
+        SELECT
+          product_id,
+          ROUND(AVG(rating)::numeric, 1) AS average_rating,
+          COUNT(*) AS rating_count
+        FROM product_reviews
+        WHERE status = 'APPROVED'
+        GROUP BY product_id
+      ) r
+        ON r.product_id = p.id
 
-      WHERE p.id = ?
+      WHERE p.id = $1
 
       LIMIT 1
       `,
-      [id]
+      [productId]
     );
+
+    const products = productResult.rows;
 
     if (!products.length) {
       return NextResponse.json(
@@ -89,13 +107,17 @@ export async function GET(
 
     const product = products[0];
 
+    // ============================================================
+    // PRODUCT RELATED DATA
+    // ============================================================
+
     const [
       imageResult,
       tagResult,
       specificationResult,
       variantResult,
     ] = await Promise.all([
-      db.query<(ProductImage & RowDataPacket)[]>(
+      db.query<ProductImage>(
         `
         SELECT
           id,
@@ -103,38 +125,38 @@ export async function GET(
           image_url,
           is_thumbnail
         FROM product_images
-        WHERE product_id=?
-        ORDER BY is_thumbnail DESC,id ASC
+        WHERE product_id = $1
+        ORDER BY is_thumbnail DESC, id ASC
         `,
-        [id]
+        [productId]
       ),
 
-      db.query<(ProductTag & RowDataPacket)[]>(
+      db.query<ProductTag>(
         `
         SELECT
           id,
           product_id,
           tag
         FROM product_tags
-        WHERE product_id=?
+        WHERE product_id = $1
         `,
-        [id]
+        [productId]
       ),
 
-      db.query<(ProductSpecification & RowDataPacket)[]>(
+      db.query<ProductSpecification>(
         `
         SELECT
           id,
           specification_name,
           specification_value
         FROM product_specifications
-        WHERE product_id=?
+        WHERE product_id = $1
         ORDER BY id ASC
         `,
-        [id]
+        [productId]
       ),
 
-      db.query<(ProductVariant & RowDataPacket)[]>(
+      db.query<ProductVariant>(
         `
         SELECT
           id,
@@ -143,33 +165,37 @@ export async function GET(
           size,
           stock
         FROM product_variants
-        WHERE product_id=?
+        WHERE product_id = $1
         ORDER BY id ASC
         `,
-        [id]
+        [productId]
       ),
     ]);
+
+    // ============================================================
+    // RESPONSE
+    // ============================================================
 
     return NextResponse.json({
       success: true,
       data: {
         ...product,
 
-        images: imageResult[0].map((img) => ({
+        images: imageResult.rows.map((img) => ({
           id: img.id,
           image_url: img.image_url,
           is_thumbnail: Boolean(img.is_thumbnail),
         })),
 
-        tags: tagResult[0].map((tag) => tag.tag),
+        tags: tagResult.rows.map((tag) => tag.tag),
 
-        specifications: specificationResult[0].map((spec) => ({
+        specifications: specificationResult.rows.map((spec) => ({
           id: spec.id,
           specification_name: spec.specification_name,
           specification_value: spec.specification_value,
         })),
 
-        variants: variantResult[0].map((variant) => ({
+        variants: variantResult.rows.map((variant) => ({
           id: variant.id,
           sku: variant.sku,
           color: variant.color,

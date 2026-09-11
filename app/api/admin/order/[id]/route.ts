@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
+import { PoolClient } from "pg";
 
 interface OrderRow extends RowDataPacket {
   id: number;
@@ -80,8 +81,6 @@ export async function GET(
 
     const orderId = Number(id);
 
-   
-
     if (!orderId || Number.isNaN(orderId)) {
       return NextResponse.json(
         {
@@ -96,7 +95,7 @@ export async function GET(
     // GET ORDER + CUSTOMER
     // ============================================================
 
-    const [orderRows] = await db.query<OrderRow[]>(
+    const orderResult = await db.query<OrderRow>(
       `
       SELECT
         o.id,
@@ -127,12 +126,14 @@ export async function GET(
       INNER JOIN customers u
         ON u.id = o.user_id
 
-      WHERE o.id = ?
+      WHERE o.id = $1
 
       LIMIT 1
       `,
       [orderId]
     );
+
+    const orderRows = orderResult.rows;
 
     if (orderRows.length === 0) {
       return NextResponse.json(
@@ -150,7 +151,7 @@ export async function GET(
     // GET ORDER ITEMS + PRODUCTS
     // ============================================================
 
-    const [itemRows] = await db.query<OrderItemRow[]>(
+    const itemResult = await db.query<OrderItemRow>(
       `
       SELECT
         oi.id AS order_item_id,
@@ -164,19 +165,31 @@ export async function GET(
 
         p.name AS product_name,
         p.sku,
-        p.price AS product_price
+        p.price AS product_price,
+
+        pi.image_url AS product_image
 
       FROM order_items oi
 
       INNER JOIN products p
         ON p.id = oi.product_id
 
-      WHERE oi.order_id = ?
+      LEFT JOIN LATERAL (
+        SELECT image_url
+        FROM product_images
+        WHERE product_id = p.id
+        ORDER BY is_thumbnail DESC, id ASC
+        LIMIT 1
+      ) pi ON true
+
+      WHERE oi.order_id = $1
 
       ORDER BY oi.id ASC
       `,
       [orderId]
     );
+
+    const itemRows = itemResult.rows;
 
     // ============================================================
     // RESPONSE
@@ -226,10 +239,6 @@ export async function GET(
             sku: item.sku,
             status: item.status,
             price: Number(item.product_price),
-            // sale_price:
-            //   item.price !== null
-            //     ? Number(item.price)
-            //     : null,
             image: item.product_image,
           },
         })),
@@ -254,453 +263,444 @@ export async function GET(
 // PUT - UPDATE ORDER
 // ============================================================
 
+
+
 export async function PUT(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // ========================================================
-        // ORDER ID
-        // ========================================================
-
-        const { id } = await params;
-
-        const orderId = Number(id);
-
-        if (!orderId || Number.isNaN(orderId)) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Invalid order ID.",
-                },
-                { status: 400 }
-            );
-        }
-
-        // ========================================================
-        // REQUEST BODY
-        // ========================================================
-
-        const body =  (await req.json()) as UpdateOrderRequest;
-
-        const {
-            items,
-            shipping_address,
-            discount,
-            shipping_rate,
-            shipping_location,
-            payment_status,
-            order_status,
-        } = body;
-
-        // ========================================================
-        // VALIDATE ITEMS
-        // ========================================================
-
-        if (!Array.isArray(items)) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Items must be an array.",
-                },
-                { status: 400 }
-            );
-        }
-
-        // ========================================================
-        // VALIDATE ADDRESS
-        // ========================================================
-
-        if (
-            !shipping_address ||
-            typeof shipping_address !== "object"
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Shipping address is required.",
-                },
-                { status: 400 }
-            );
-        }
-
-        // ========================================================
-        // VALIDATE MONEY
-        // ========================================================
-
-        const discountAmount = Number(
-            discount ?? 0
-        );
-
-        const shippingAmount = Number(
-            shipping_rate ?? 0
-        );
-
-        if (
-            !Number.isFinite(discountAmount) ||
-            discountAmount < 0
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Invalid discount amount.",
-                },
-                { status: 400 }
-            );
-        }
-
-        if (
-            !Number.isFinite(shippingAmount) ||
-            shippingAmount < 0
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Invalid shipping amount.",
-                },
-                { status: 400 }
-            );
-        }
-
-        // ========================================================
-        // GET ORDER
-        // ========================================================
-
-        const [orderRows] =
-            await db.query<RowDataPacket[]>(
-                `
-                SELECT
-                    id,
-                    order_status
-                FROM orders
-                WHERE id = ?
-                LIMIT 1
-                `,
-                [orderId]
-            );
-
-        if (orderRows.length === 0) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Order not found.",
-                },
-                { status: 404 }
-            );
-        }
-
-        // ========================================================
-        // GET EXISTING ORDER ITEMS
-        // ========================================================
-
-        const [existingItems] =
-            await db.query<ExistingOrderItem[]>(
-                `
-                SELECT
-                    id,
-                    order_id,
-                    product_id,
-                    qty,
-                    price,
-                    subtotal,
-                    status
-                FROM order_items
-                WHERE order_id = ?
-                ORDER BY id ASC
-                `,
-                [orderId]
-            );
-
-        // ========================================================
-        // VALIDATE ALL ORDER ITEMS
-        // ========================================================
-
-        const existingItemMap =
-            new Map<number, ExistingOrderItem>();
-
-        for (const item of existingItems) {
-            existingItemMap.set(
-                Number(item.id),
-                item
-            );
-        }
-
-        for (const item of items) {
-            const itemId = Number(
-                item.order_item_id
-            );
-
-            // --------------------------------------------
-            // Check item belongs to this order
-            // --------------------------------------------
-
-            if (!existingItemMap.has(itemId)) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            `Order item ${itemId} does not belong to this order.`,
-                    },
-                    { status: 400 }
-                );
-            }
-
-            // --------------------------------------------
-            // Validate status
-            // --------------------------------------------
-
-            if (
-                item.status !== "ACTIVE" &&
-                item.status !== "CANCELLED"
-            ) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            `Invalid status for order item ${itemId}.`,
-                    },
-                    { status: 400 }
-                );
-            }
-
-            // --------------------------------------------
-            // Validate quantity
-            // --------------------------------------------
-
-            const qty = Number(item.qty);
-
-            if (
-                !Number.isInteger(qty) ||
-                qty < 1
-            ) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            `Invalid quantity for order item ${itemId}.`,
-                    },
-                    { status: 400 }
-                );
-            }
-        }
-
-        // ========================================================
-        // START TRANSACTION
-        // ========================================================
-
-        await db.query("START TRANSACTION");
-
-        try {
-            // ====================================================
-            // UPDATE ORDER ITEMS
-            // ====================================================
-
-            for (const item of items) {
-                const existingItem =
-                    existingItemMap.get(
-                        Number(
-                            item.order_item_id
-                        )
-                    );
-
-                if (!existingItem) {
-                    throw new Error(
-                        `Order item ${item.order_item_id} not found.`
-                    );
-                }
-
-                const qty = Number(item.qty);
-
-                const price = Number(
-                    existingItem.price
-                );
-
-                const itemSubtotal =
-                    item.status === "CANCELLED"
-                        ? 0
-                        : price * qty;
-
-                await db.query(
-                    `
-                    UPDATE order_items
-                    SET
-                        qty = ?,
-                        subtotal = ?,
-                        status = ?
-                    WHERE id = ?
-                    AND order_id = ?
-                    `,
-                    [
-                        qty,
-                        itemSubtotal,
-                        item.status,
-                        Number(
-                            item.order_item_id
-                        ),
-                        orderId,
-                    ]
-                );
-            }
-
-            // ====================================================
-            // UPDATE SHIPPING ADDRESS + ORDER CHARGES
-            // ====================================================
-
-            const addressData = {
-                name:
-                    shipping_address.name?.trim() ||
-                    "",
-                phone:
-                    shipping_address.phone?.trim() ||
-                    "",
-                address:
-                    shipping_address.address?.trim() ||
-                    "",
-                city:
-                    shipping_address.city?.trim() ||
-                    "",
-                zip:
-                    shipping_address.zip?.trim() ||
-                    "",
-            };
-
-            await db.query(
-                `
-                UPDATE orders
-                SET
-                    shipping_address = ?,
-                    shipping_rate = ?,
-                    discount = ?,
-                    payment_status = ?,
-                    order_status = ?
-                WHERE id = ?
-                `,
-                [
-                    JSON.stringify(addressData),
-                    shippingAmount,
-                    discountAmount,
-                    payment_status || "PENDING",
-                    order_status || "PROCESSING",
-                    orderId,
-                ]
-            );
-
-            // ====================================================
-            // RECALCULATE SUBTOTAL
-            // ====================================================
-
-            const [subtotalRows] =
-                await db.query<RowDataPacket[]>(
-                    `
-                    SELECT
-                        COALESCE(
-                            SUM(subtotal),
-                            0
-                        ) AS subtotal
-                    FROM order_items
-                    WHERE order_id = ?
-                    AND status = 'ACTIVE'
-                    `,
-                    [orderId]
-                );
-
-            const calculatedSubtotal =
-                Number(
-                    subtotalRows[0]?.subtotal ||
-                        0
-                );
-
-            // ====================================================
-            // CALCULATE TOTAL
-            // ====================================================
-
-            const calculatedTotal = Math.max(
-                0,
-                calculatedSubtotal +
-                    shippingAmount -
-                    discountAmount
-            );
-
-            // ====================================================
-            // UPDATE ORDER TOTALS
-            // ====================================================
-
-            await db.query(
-                `
-                UPDATE orders
-                SET
-                    subtotal = ?,
-                    total = ?
-                WHERE id = ?
-                `,
-                [
-                    calculatedSubtotal,
-                    calculatedTotal,
-                    orderId,
-                ]
-            );
-
-            // ====================================================
-            // COMMIT
-            // ====================================================
-
-            await db.query("COMMIT");
-
-            // ====================================================
-            // RESPONSE
-            // ====================================================
-
-            return NextResponse.json({
-                success: true,
-
-                message:
-                    "Order updated successfully.",
-
-                data: {
-                    order_id: orderId,
-
-                    subtotal:  calculatedSubtotal,
-
-                    shipping_rate:   shippingAmount,
-
-                    discount: discountAmount,
-
-                    total:  calculatedTotal,
-
-                    payment_status:  payment_status || "PENDING",
-
-                    order_status:  order_status || "PROCESSING",
-
-                    shipping_address:  addressData,
-                },
-            });
-        } catch (error) {
-            // ====================================================
-            // ROLLBACK
-            // ====================================================
-
-            await db.query("ROLLBACK");
-
-            throw error;
-        }
-    } catch (error) {
-        console.error(
-            "Update Order Error:",
-            error
-        );
-
-        return NextResponse.json(
-            {
-                success: false,
-                message:
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to update order.",
-            },
-            { status: 500 }
-        );
+  let client: PoolClient | null = null;
+
+  try {
+    // ========================================================
+    // ORDER ID
+    // ========================================================
+
+    const { id } = await params;
+
+    const orderId = Number(id);
+
+    if (!orderId || Number.isNaN(orderId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid order ID.",
+        },
+        { status: 400 }
+      );
     }
+
+    // ========================================================
+    // REQUEST BODY
+    // ========================================================
+
+    const body = (await req.json()) as UpdateOrderRequest;
+
+    const {
+      items,
+      shipping_address,
+      discount,
+      shipping_rate,
+      shipping_location,
+      payment_status,
+      order_status,
+    } = body;
+
+    // ========================================================
+    // VALIDATE ITEMS
+    // ========================================================
+
+    if (!Array.isArray(items)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Items must be an array.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================
+    // VALIDATE ADDRESS
+    // ========================================================
+
+    if (
+      !shipping_address ||
+      typeof shipping_address !== "object"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Shipping address is required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================
+    // VALIDATE MONEY
+    // ========================================================
+
+    const discountAmount = Number(discount ?? 0);
+    const shippingAmount = Number(shipping_rate ?? 0);
+
+    if (
+      !Number.isFinite(discountAmount) ||
+      discountAmount < 0
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid discount amount.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !Number.isFinite(shippingAmount) ||
+      shippingAmount < 0
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid shipping amount.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ========================================================
+    // GET ORDER
+    // ========================================================
+
+    const orderResult = await db.query<{
+      id: number;
+      order_status: string;
+    }>(
+      `
+      SELECT
+        id,
+        order_status
+      FROM orders
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [orderId]
+    );
+
+    const orderRows = orderResult.rows;
+
+    if (orderRows.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Order not found.",
+        },
+        { status: 404 }
+      );
+    }
+
+    // ========================================================
+    // GET EXISTING ORDER ITEMS
+    // ========================================================
+
+    const existingItemsResult =
+      await db.query<ExistingOrderItem>(
+        `
+        SELECT
+          id,
+          order_id,
+          product_id,
+          qty,
+          price,
+          subtotal,
+          status
+        FROM order_items
+        WHERE order_id = $1
+        ORDER BY id ASC
+        `,
+        [orderId]
+      );
+
+    const existingItems = existingItemsResult.rows;
+
+    // ========================================================
+    // VALIDATE ALL ORDER ITEMS
+    // ========================================================
+
+    const existingItemMap =
+      new Map<number, ExistingOrderItem>();
+
+    for (const item of existingItems) {
+      existingItemMap.set(Number(item.id), item);
+    }
+
+    for (const item of items) {
+      const itemId = Number(item.order_item_id);
+
+      // --------------------------------------------
+      // Check item belongs to this order
+      // --------------------------------------------
+
+      if (!existingItemMap.has(itemId)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Order item ${itemId} does not belong to this order.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // --------------------------------------------
+      // Validate status
+      // --------------------------------------------
+
+      if (
+        item.status !== "ACTIVE" &&
+        item.status !== "CANCELLED"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Invalid status for order item ${itemId}.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // --------------------------------------------
+      // Validate quantity
+      // --------------------------------------------
+
+      const qty = Number(item.qty);
+
+      if (
+        !Number.isInteger(qty) ||
+        qty < 1
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Invalid quantity for order item ${itemId}.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ========================================================
+    // START TRANSACTION
+    // ========================================================
+
+    client = await db.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // ====================================================
+      // UPDATE ORDER ITEMS
+      // ====================================================
+
+      for (const item of items) {
+        const existingItem =
+          existingItemMap.get(
+            Number(item.order_item_id)
+          );
+
+        if (!existingItem) {
+          throw new Error(
+            `Order item ${item.order_item_id} not found.`
+          );
+        }
+
+        const qty = Number(item.qty);
+        const price = Number(existingItem.price);
+
+        const itemSubtotal =
+          item.status === "CANCELLED"
+            ? 0
+            : price * qty;
+
+        await client.query(
+          `
+          UPDATE order_items
+          SET
+            qty = $1,
+            subtotal = $2,
+            status = $3
+          WHERE id = $4
+            AND order_id = $5
+          `,
+          [
+            qty,
+            itemSubtotal,
+            item.status,
+            Number(item.order_item_id),
+            orderId,
+          ]
+        );
+      }
+
+      // ====================================================
+      // UPDATE SHIPPING ADDRESS + ORDER CHARGES
+      // ====================================================
+
+      const addressData = {
+        name:
+          shipping_address.name?.trim() || "",
+        phone:
+          shipping_address.phone?.trim() || "",
+        address:
+          shipping_address.address?.trim() || "",
+        city:
+          shipping_address.city?.trim() || "",
+        zip:
+          shipping_address.zip?.trim() || "",
+      };
+
+      await client.query(
+        `
+        UPDATE orders
+        SET
+          shipping_address = $1,
+          shipping_rate = $2,
+          discount = $3,
+          payment_status = $4,
+          order_status = $5
+        WHERE id = $6
+        `,
+        [
+          JSON.stringify(addressData),
+          shippingAmount,
+          discountAmount,
+          payment_status || "PENDING",
+          order_status || "PROCESSING",
+          orderId,
+        ]
+      );
+
+      // ====================================================
+      // RECALCULATE SUBTOTAL
+      // ====================================================
+
+      const subtotalResult = await client.query<{
+        subtotal: string | number;
+      }>(
+        `
+        SELECT
+          COALESCE(
+            SUM(subtotal),
+            0
+          ) AS subtotal
+        FROM order_items
+        WHERE order_id = $1
+          AND status = 'ACTIVE'
+        `,
+        [orderId]
+      );
+
+      const calculatedSubtotal = Number(
+        subtotalResult.rows[0]?.subtotal || 0
+      );
+
+      // ====================================================
+      // CALCULATE TOTAL
+      // ====================================================
+
+      const calculatedTotal = Math.max(
+        0,
+        calculatedSubtotal +
+          shippingAmount -
+          discountAmount
+      );
+
+      // ====================================================
+      // UPDATE ORDER TOTALS
+      // ====================================================
+
+      await client.query(
+        `
+        UPDATE orders
+        SET
+          subtotal = $1,
+          total = $2
+        WHERE id = $3
+        `,
+        [
+          calculatedSubtotal,
+          calculatedTotal,
+          orderId,
+        ]
+      );
+
+      // ====================================================
+      // COMMIT
+      // ====================================================
+
+      await client.query("COMMIT");
+
+      // ====================================================
+      // RESPONSE
+      // ====================================================
+
+      return NextResponse.json({
+        success: true,
+
+        message: "Order updated successfully.",
+
+        data: {
+          order_id: orderId,
+
+          subtotal: calculatedSubtotal,
+
+          shipping_rate: shippingAmount,
+
+          discount: discountAmount,
+
+          total: calculatedTotal,
+
+          payment_status:
+            payment_status || "PENDING",
+
+          order_status:
+            order_status || "PROCESSING",
+
+          shipping_address: addressData,
+        },
+      });
+    } catch (error) {
+      // ====================================================
+      // ROLLBACK
+      // ====================================================
+
+      await client.query("ROLLBACK");
+
+      throw error;
+    }
+  } catch (error) {
+    console.error(
+      "Update Order Error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update order.",
+      },
+      { status: 500 }
+    );
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 }

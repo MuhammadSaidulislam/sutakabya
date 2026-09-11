@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import { Category } from '@/types/categories';
 import ProductThumb from '../ProductThumb';
 import { ProductImage } from '@/types/imageProps';
+import Image from 'next/image';
 
 type SearchProduct = {
   id: number;
@@ -113,17 +114,7 @@ export default function NavBar({ isLoggedIn, categories }: NavBarProps) {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-pink-light text-brand-pink">
-            <Heart size={18} fill="currentColor" />
-          </span>
-          <span className="flex flex-col leading-none">
-            <span className="font-display text-lg font-bold text-brand-ink sm:text-xl">
-              Kids &amp; Mom
-            </span>
-            <span className="hidden text-[10px] tracking-wide text-brand-muted sm:block">
-              For the love of little ones
-            </span>
-          </span>
+         <Image src="/logo.jpeg" alt="Logo" width={40} height={40} />
         </Link>
 
         {/* Search - desktop/tablet */}

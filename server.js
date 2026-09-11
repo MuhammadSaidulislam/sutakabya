@@ -1,23 +1,17 @@
-import { createServer } from "node:http";
-import { parse } from "node:url";
-import next from "next";
+const { createServer } = require('http')
+const { parse } = require('url')
+const next = require('next')
 
-const port = Number(process.env.PORT) || 3000;
-const hostname = "0.0.0.0";
+const dev = process.env.NODE_ENV !== 'production'
+const app = next({ dev })
+const handle = app.getRequestHandler()
 
-const app = next({
-  dev: false,
-  hostname,
-  port,
-});
-
-const handle = app.getRequestHandler();
-
-await app.prepare();
-
-createServer((req, res) => {
-  const parsedUrl = parse(req.url, true);
-  handle(req, res, parsedUrl);
-}).listen(port, hostname, () => {
-  console.log(`> Ready on http://${hostname}:${port}`);
-});
+app.prepare().then(() => {
+  createServer((req, res) => {
+    const parsedUrl = parse(req.url, true)
+    handle(req, res, parsedUrl)
+  }).listen(process.env.PORT, (err) => {
+    if (err) throw err
+    console.log('Ready on port', process.env.PORT)
+  })
+})

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
+import { PoolClient } from "pg";
+
 const VALID_STATUSES = [
   "PENDING",
   "PROCESSING",
@@ -47,34 +49,62 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const [rows] = await db.execute<RowDataPacket[]>(
+    const result = await db.query(
       `SELECT
-        d.id, d.order_id, d.courier_company, d.delivery_date, d.status AS delivery_status,
-        o.order_no, o.order_status, o.payment_status,
-        c.id AS customer_id, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
-        o.shipping_address, o.shipping_location,
-        o.subtotal, o.shipping_rate, o.discount, o.coupon_discount, o.total,
-        o.ordered_at, d.created_at, d.updated_at
+        d.id,
+        d.order_id,
+        d.courier_company,
+        d.delivery_date,
+        d.status AS delivery_status,
+        o.order_no,
+        o.order_status,
+        o.payment_status,
+        c.id AS customer_id,
+        c.name AS customer_name,
+        c.phone AS customer_phone,
+        c.email AS customer_email,
+        o.shipping_address,
+        o.shipping_location,
+        o.subtotal,
+        o.shipping_rate,
+        o.discount,
+        o.coupon_discount,
+        o.total,
+        o.ordered_at,
+        d.created_at,
+        d.updated_at
       FROM deliveries d
       INNER JOIN orders o ON o.id = d.order_id
       LEFT JOIN customers c ON c.id = o.user_id
-      WHERE d.order_id = ?
+      WHERE d.order_id = $1
       LIMIT 1`,
       [id]
     );
 
+    const rows = result.rows;
+
     if (rows.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Delivery not found" },
+        {
+          success: false,
+          message: "Delivery not found",
+        },
         { status: 201 }
       );
     }
 
-    return NextResponse.json({ success: true, data: rows[0] });
+    return NextResponse.json({
+      success: true,
+      data: rows[0],
+    });
   } catch (error) {
     console.error("Get delivery error:", error);
+
     return NextResponse.json(
-      { success: false, message: "Failed to fetch delivery" },
+      {
+        success: false,
+        message: "Failed to fetch delivery",
+      },
       { status: 500 }
     );
   }
@@ -87,11 +117,12 @@ export async function GET(
 // ============================================================
 
 
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let connection;
+  let client: PoolClient | null = null;
 
   try {
     const { id } = await params;
@@ -135,32 +166,33 @@ export async function PUT(
     // GET CONNECTION
     // ============================================================
 
-    connection = await db.getConnection();
+    client = await db.connect();
 
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
     // ============================================================
     // CHECK DELIVERY
     // ============================================================
 
-    const [existing] =
-      await connection.query<RowDataPacket[]>(
-        `
-        SELECT
-          id,
-          order_id,
-          courier_company,
-          delivery_date,
-          status
-        FROM deliveries
-        WHERE id = ?
-        LIMIT 1
-        `,
-        [id]
-      );
+    const existingResult = await client.query(
+      `
+      SELECT
+        id,
+        order_id,
+        courier_company,
+        delivery_date,
+        status
+      FROM deliveries
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    const existing = existingResult.rows;
 
     if (existing.length === 0) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -177,22 +209,23 @@ export async function PUT(
     // CHECK RELATED ORDER
     // ============================================================
 
-    const [orders] =
-      await connection.query<RowDataPacket[]>(
-        `
-        SELECT
-          id,
-          order_no,
-          order_status
-        FROM orders
-        WHERE id = ?
-        LIMIT 1
-        `,
-        [existingDelivery.order_id]
-      );
+    const ordersResult = await client.query(
+      `
+      SELECT
+        id,
+        order_no,
+        order_status
+      FROM orders
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [existingDelivery.order_id]
+    );
+
+    const orders = ordersResult.rows;
 
     if (orders.length === 0) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -210,13 +243,11 @@ export async function PUT(
     // ============================================================
 
     if (
-      ["CANCELLED", "RETURN"].includes(
-        currentOrderStatus
-      ) &&
+      ["CANCELLED", "RETURN"].includes(currentOrderStatus) &&
       status !== undefined &&
       status !== currentOrderStatus
     ) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -232,23 +263,21 @@ export async function PUT(
     // ============================================================
 
     const fields: string[] = [];
-    const values: (string | null)[] = [];
+    const values: (string | number | null)[] = [];
 
     if (courier_company !== undefined) {
-      fields.push("courier_company = ?");
-      values.push(
-        courier_company?.trim() || null
-      );
+      values.push(courier_company?.trim() || null);
+      fields.push(`courier_company = $${values.length}`);
     }
 
     if (delivery_date !== undefined) {
-      fields.push("delivery_date = ?");
       values.push(delivery_date || null);
+      fields.push(`delivery_date = $${values.length}`);
     }
 
     if (status !== undefined) {
-      fields.push("status = ?");
       values.push(status);
+      fields.push(`status = $${values.length}`);
     }
 
     // ============================================================
@@ -256,7 +285,7 @@ export async function PUT(
     // ============================================================
 
     if (fields.length === 0) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
@@ -273,11 +302,11 @@ export async function PUT(
 
     values.push(id);
 
-    await connection.query(
+    await client.query(
       `
       UPDATE deliveries
       SET ${fields.join(", ")}
-      WHERE id = ?
+      WHERE id = $${values.length}
       `,
       values
     );
@@ -290,11 +319,11 @@ export async function PUT(
     // ============================================================
 
     if (status !== undefined) {
-      await connection.query(
+      await client.query(
         `
         UPDATE orders
-        SET order_status = ?
-        WHERE id = ?
+        SET order_status = $1
+        WHERE id = $2
         `,
         [
           status,
@@ -307,29 +336,30 @@ export async function PUT(
     // GET UPDATED DELIVERY
     // ============================================================
 
-    const [rows] =
-      await connection.query<RowDataPacket[]>(
-        `
-        SELECT
-          id,
-          order_id,
-          courier_company,
-          delivery_date,
-          status,
-          created_at,
-          updated_at
-        FROM deliveries
-        WHERE id = ?
-        LIMIT 1
-        `,
-        [id]
-      );
+    const updatedResult = await client.query(
+      `
+      SELECT
+        id,
+        order_id,
+        courier_company,
+        delivery_date,
+        status,
+        created_at,
+        updated_at
+      FROM deliveries
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    const rows = updatedResult.rows;
 
     // ============================================================
     // COMMIT
     // ============================================================
 
-    await connection.commit();
+    await client.query("COMMIT");
 
     return NextResponse.json({
       success: true,
@@ -337,9 +367,9 @@ export async function PUT(
       data: rows[0],
     });
   } catch (error) {
-    if (connection) {
+    if (client) {
       try {
-        await connection.rollback();
+        await client.query("ROLLBACK");
       } catch (rollbackError) {
         console.error(
           "Rollback error:",
@@ -358,8 +388,8 @@ export async function PUT(
       { status: 500 }
     );
   } finally {
-    if (connection) {
-      connection.release();
+    if (client) {
+      client.release();
     }
   }
 }

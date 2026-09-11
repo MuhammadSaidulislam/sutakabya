@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db from "@/lib/db";
 
 const OTP_SECRET = process.env.OTP_SIGNING_SECRET!;
 const OTP_TTL_SECONDS = 60;
@@ -22,13 +22,17 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Email or mobile number is required.",
+          message:
+            "Email or mobile number is required.",
         },
         { status: 400 }
       );
     }
 
-    if (phone && !/^[0-9]{10,15}$/.test(phone)) {
+    if (
+      phone &&
+      !/^[0-9]{10,15}$/.test(phone)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -38,7 +42,10 @@ export async function POST(req: Request) {
       );
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (
+      email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -53,33 +60,57 @@ export async function POST(req: Request) {
     // =====================================================
 
     let userId: number | null = null;
-    let userPhone: string | null = phone ?? null;
-    let userEmail: string | null = email ?? null;
+
+    let userPhone: string | null =
+      phone ?? null;
+
+    let userEmail: string | null =
+      email ?? null;
 
     if (purpose === "password_reset") {
-      let users: RowDataPacket[];
+      let userResult;
 
       if (phone) {
-        [users] = await db.query<RowDataPacket[]>(
+        userResult = await db.query<{
+          id: number;
+          name: string;
+          email: string | null;
+          phone: string | null;
+        }>(
           `
-          SELECT id, name, email, phone
+          SELECT
+            id,
+            name,
+            email,
+            phone
           FROM customers
-          WHERE phone = ?
+          WHERE phone = $1
           LIMIT 1
           `,
           [phone]
         );
       } else {
-        [users] = await db.query<RowDataPacket[]>(
+        userResult = await db.query<{
+          id: number;
+          name: string;
+          email: string | null;
+          phone: string | null;
+        }>(
           `
-          SELECT id, name, email, phone
+          SELECT
+            id,
+            name,
+            email,
+            phone
           FROM customers
-          WHERE email = ?
+          WHERE email = $1
           LIMIT 1
           `,
           [email]
         );
       }
+
+      const users = userResult.rows;
 
       if (users.length === 0) {
         return NextResponse.json(
@@ -94,7 +125,7 @@ export async function POST(req: Request) {
 
       const user = users[0];
 
-      userId = user.id;
+      userId = Number(user.id);
       userPhone = user.phone;
       userEmail = user.email;
     }
@@ -133,7 +164,10 @@ export async function POST(req: Request) {
       .toString("base64url");
 
     const signature = crypto
-      .createHmac("sha256", OTP_SECRET)
+      .createHmac(
+        "sha256",
+        OTP_SECRET
+      )
       .update(payloadB64)
       .digest("hex");
 
@@ -144,6 +178,7 @@ export async function POST(req: Request) {
     // =====================================================
 
     // Your current SMS API requires a phone number.
+
     if (!userPhone) {
       return NextResponse.json(
         {
@@ -163,7 +198,8 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          api_key: process.env.SMS_BD_API_KEY,
+          api_key:
+            process.env.SMS_BD_API_KEY,
           msg: `Your OTP code is: ${otp}`,
           to: userPhone,
         }),
@@ -191,9 +227,11 @@ export async function POST(req: Request) {
       message: "OTP sent successfully.",
       token,
     });
-
   } catch (error) {
-    console.error("Send OTP error:", error);
+    console.error(
+      "Send OTP error:",
+      error
+    );
 
     return NextResponse.json(
       {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import  db from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,18 +8,43 @@ export async function GET(req: NextRequest) {
 
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
-    const search = searchParams.get("search")?.trim() || "";
+    const search =
+      searchParams.get("search")?.trim() || "";
+
     const offset = (page - 1) * limit;
 
+    // ============================================================
+    // SEARCH
+    // ============================================================
+
     const whereClause = search
-      ? `WHERE u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?`
+      ? `
+        WHERE
+          u.name ILIKE $1
+          OR u.email ILIKE $2
+          OR u.phone ILIKE $3
+      `
       : "";
 
-    const whereParams = search
-      ? [`%${search}%`, `%${search}%`, `%${search}%`]
+    const whereParams: (string | number)[] = search
+      ? [
+          `%${search}%`,
+          `%${search}%`,
+          `%${search}%`,
+        ]
       : [];
 
-    const [rows] = await db.query<RowDataPacket[]>(
+    // ============================================================
+    // GET CUSTOMERS
+    // ============================================================
+
+    const limitParam =
+      `$${whereParams.length + 1}`;
+
+    const offsetParam =
+      `$${whereParams.length + 2}`;
+
+    const result = await db.query(
       `
       SELECT
           u.id,
@@ -47,7 +72,9 @@ export async function GET(req: NextRequest) {
           SELECT o1.*
           FROM orders o1
           INNER JOIN (
-              SELECT user_id, MAX(id) AS last_order_id
+              SELECT
+                  user_id,
+                  MAX(id) AS last_order_id
               FROM orders
               GROUP BY user_id
           ) t
@@ -68,12 +95,24 @@ export async function GET(req: NextRequest) {
           lo.order_status
 
       ORDER BY u.created_at DESC
-      LIMIT ? OFFSET ?
+
+      LIMIT ${limitParam}
+      OFFSET ${offsetParam}
       `,
-      [...whereParams, limit, offset]
+      [
+        ...whereParams,
+        limit,
+        offset,
+      ]
     );
 
-    const [countResult] = await db.query<RowDataPacket[]>(
+    const rows = result.rows;
+
+    // ============================================================
+    // TOTAL COUNT
+    // ============================================================
+
+    const countResult = await db.query(
       `
       SELECT COUNT(*) AS total
       FROM customers u
@@ -82,7 +121,13 @@ export async function GET(req: NextRequest) {
       whereParams
     );
 
-    const total = Number(countResult[0].total);
+    const total = Number(
+      countResult.rows[0]?.total || 0
+    );
+
+    // ============================================================
+    // RESPONSE
+    // ============================================================
 
     return NextResponse.json({
       success: true,
@@ -91,7 +136,9 @@ export async function GET(req: NextRequest) {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(
+          total / limit
+        ),
       },
     });
   } catch (error) {
@@ -100,7 +147,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch customers.",
+        message:
+          "Failed to fetch customers.",
       },
       { status: 500 }
     );

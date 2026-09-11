@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 interface ShippingRate extends RowDataPacket {
   id: number;
@@ -15,10 +15,9 @@ interface ShippingRate extends RowDataPacket {
 // GET ALL SHIPPING RATES
 // GET /api/admin/shipping-rates
 // ============================================================
-
 export async function GET() {
   try {
-    const [rows] = await db.query<ShippingRate[]>(
+    const result = await db.query<ShippingRate>(
       `
       SELECT
         id,
@@ -32,12 +31,17 @@ export async function GET() {
       `
     );
 
+    const rows = result.rows;
+
     return NextResponse.json({
       success: true,
       data: rows,
     });
   } catch (error) {
-    console.error("Get shipping rates error:", error);
+    console.error(
+      "Get shipping rates error:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -68,11 +72,15 @@ export async function POST(req: NextRequest) {
     // Validation
     // -----------------------------
 
-    if (!name || typeof name !== "string") {
+    if (
+      !name ||
+      typeof name !== "string"
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Shipping rate name is required",
+          message:
+            "Shipping rate name is required",
         },
         { status: 400 }
       );
@@ -87,13 +95,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Valid shipping rate is required",
+          message:
+            "Valid shipping rate is required",
         },
         { status: 400 }
       );
     }
 
-    if (!["ACTIVE", "INACTIVE"].includes(status)) {
+    if (
+      !["ACTIVE", "INACTIVE"].includes(status)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -107,21 +118,25 @@ export async function POST(req: NextRequest) {
     // Check duplicate name
     // -----------------------------
 
-    const [existing] = await db.query<ShippingRate[]>(
-      `
-      SELECT id
-      FROM shipping_rates
-      WHERE name = ?
-      LIMIT 1
-      `,
-      [name.trim()]
-    );
+    const existingResult =
+      await db.query<ShippingRate>(
+        `
+        SELECT id
+        FROM shipping_rates
+        WHERE name = $1
+        LIMIT 1
+        `,
+        [name.trim()]
+      );
+
+    const existing = existingResult.rows;
 
     if (existing.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "Shipping rate with this name already exists",
+          message:
+            "Shipping rate with this name already exists",
         },
         { status: 409 }
       );
@@ -131,12 +146,15 @@ export async function POST(req: NextRequest) {
     // Insert
     // -----------------------------
 
-    const [result] = await db.query<ResultSetHeader>(
+    const result = await db.query<{
+      id: number;
+    }>(
       `
       INSERT INTO shipping_rates
         (name, rate, status)
       VALUES
-        (?, ?, ?)
+        ($1, $2, $3)
+      RETURNING id
       `,
       [
         name.trim(),
@@ -145,40 +163,51 @@ export async function POST(req: NextRequest) {
       ]
     );
 
+    const shippingRateId =
+      result.rows[0].id;
+
     // -----------------------------
     // Get created record
     // -----------------------------
 
-    const [rows] = await db.query<ShippingRate[]>(
-      `
-      SELECT
-        id,
-        name,
-        rate,
-        status,
-        created_at,
-        updated_at
-      FROM shipping_rates
-      WHERE id = ?
-      `,
-      [result.insertId]
-    );
+    const createdResult =
+      await db.query<ShippingRate>(
+        `
+        SELECT
+          id,
+          name,
+          rate,
+          status,
+          created_at,
+          updated_at
+        FROM shipping_rates
+        WHERE id = $1
+        `,
+        [shippingRateId]
+      );
+
+    const rows = createdResult.rows;
 
     return NextResponse.json(
       {
         success: true,
-        message: "Shipping rate created successfully",
+        message:
+          "Shipping rate created successfully",
         data: rows[0],
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Create shipping rate error:", error);
+    console.error(
+      "Create shipping rate error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to create shipping rate",
+        message:
+          "Failed to create shipping rate",
       },
       { status: 500 }
     );

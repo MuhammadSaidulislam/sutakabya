@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { RowDataPacket } from "mysql2";
-import { db } from "@/lib/db";
+import db from "@/lib/db";
 import { createToken } from "@/lib/auth";
 
-interface Admin extends RowDataPacket {
+interface Admin {
   id: number;
   name: string;
   email: string;
@@ -30,15 +29,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [rows] = await db.execute<Admin[]>(
+    const result = await db.query<Admin>(
       `
-      SELECT id, name, email, password, role, status
+      SELECT
+        id,
+        name,
+        email,
+        password,
+        role,
+        status
       FROM admins
-      WHERE email = ? AND status = 'ACTIVE'
+      WHERE email = $1
+        AND status = 'ACTIVE'
       LIMIT 1
       `,
       [email]
     );
+
+   
+
+    const rows = result.rows;
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -51,8 +61,11 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = rows[0];
-
-    const matched = await bcrypt.compare(password, admin.password);
+ 
+    const matched = await bcrypt.compare(
+      password,
+      admin.password
+    );
 
     if (!matched) {
       return NextResponse.json(
@@ -88,7 +101,7 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     return response;

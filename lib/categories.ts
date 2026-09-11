@@ -1,9 +1,9 @@
 import type { Category, SubCategory } from "@/types/categories";
-import { db } from "./db";
+import db from "./db";
 
 export async function getCategories(): Promise<Category[]> {
   try {
-    const [categoryRows] = await db.query(`
+    const categoryResult = await db.query(`
       SELECT
         id,
         name,
@@ -12,7 +12,7 @@ export async function getCategories(): Promise<Category[]> {
       ORDER BY name ASC
     `);
 
-    const [subCategoryRows] = await db.query(`
+    const subCategoryResult = await db.query(`
       SELECT
         id,
         category_id,
@@ -24,13 +24,17 @@ export async function getCategories(): Promise<Category[]> {
       ORDER BY name ASC
     `);
 
-    const categories = categoryRows as Omit<Category, "subCategories">[];
-    const subCategories = subCategoryRows as SubCategory[];
+    const categories =
+      categoryResult.rows as Omit<Category, "subCategories">[];
+
+    const subCategories =
+      subCategoryResult.rows as SubCategory[];
 
     return categories.map((category) => ({
       ...category,
       subCategories: subCategories.filter(
-        (subCategory) =>  Number(subCategory.category_id) === Number(category.id)
+        (subCategory) =>
+          Number(subCategory.category_id) === Number(category.id)
       ),
     }));
   } catch (error) {

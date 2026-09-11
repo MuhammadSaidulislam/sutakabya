@@ -11,6 +11,7 @@
   "dependencies": {
     "@fontsource/fredoka": "^5.2.10",
     "@fontsource/inter": "^5.2.8",
+    "@supabase/supabase-js": "^2.116.0",
     "bangladesh-location-data": "^1.0.6",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -26,6 +27,7 @@
     "mysql2": "^3.22.6",
     "next": "16.2.10",
     "next-auth": "^4.24.14",
+    "pg": "^8.23.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-multi-carousel": "^2.8.6",
@@ -37,6 +39,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

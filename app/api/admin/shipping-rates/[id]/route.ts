@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 
 interface ShippingRate extends RowDataPacket {
   id: number;
@@ -27,7 +27,10 @@ export async function GET(
 
     const shippingRateId = Number(id);
 
-    if (!Number.isInteger(shippingRateId) || shippingRateId <= 0) {
+    if (
+      !Number.isInteger(shippingRateId) ||
+      shippingRateId <= 0
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -37,7 +40,7 @@ export async function GET(
       );
     }
 
-    const [rows] = await db.query<ShippingRate[]>(
+    const result = await db.query<ShippingRate>(
       `
       SELECT
         id,
@@ -47,11 +50,13 @@ export async function GET(
         created_at,
         updated_at
       FROM shipping_rates
-      WHERE id = ?
+      WHERE id = $1
       LIMIT 1
       `,
       [shippingRateId]
     );
+
+    const rows = result.rows;
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -68,7 +73,10 @@ export async function GET(
       data: rows[0],
     });
   } catch (error) {
-    console.error("Get shipping rate error:", error);
+    console.error(
+      "Get shipping rate error:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -96,7 +104,10 @@ export async function PUT(
 
     const shippingRateId = Number(id);
 
-    if (!Number.isInteger(shippingRateId) || shippingRateId <= 0) {
+    if (
+      !Number.isInteger(shippingRateId) ||
+      shippingRateId <= 0
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -118,19 +129,22 @@ export async function PUT(
     // Check existing record
     // -----------------------------
 
-    const [existingRows] = await db.query<ShippingRate[]>(
-      `
-      SELECT
-        id,
-        name,
-        rate,
-        status
-      FROM shipping_rates
-      WHERE id = ?
-      LIMIT 1
-      `,
-      [shippingRateId]
-    );
+    const existingResult =
+      await db.query<ShippingRate>(
+        `
+        SELECT
+          id,
+          name,
+          rate,
+          status
+        FROM shipping_rates
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [shippingRateId]
+      );
+
+    const existingRows = existingResult.rows;
 
     if (existingRows.length === 0) {
       return NextResponse.json(
@@ -146,11 +160,15 @@ export async function PUT(
     // Validation
     // -----------------------------
 
-    if (!name || typeof name !== "string") {
+    if (
+      !name ||
+      typeof name !== "string"
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Shipping rate name is required",
+          message:
+            "Shipping rate name is required",
         },
         { status: 400 }
       );
@@ -165,13 +183,16 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          message: "Valid shipping rate is required",
+          message:
+            "Valid shipping rate is required",
         },
         { status: 400 }
       );
     }
 
-    if (!["ACTIVE", "INACTIVE"].includes(status)) {
+    if (
+      !["ACTIVE", "INACTIVE"].includes(status)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -185,25 +206,30 @@ export async function PUT(
     // Check duplicate name
     // -----------------------------
 
-    const [duplicateRows] = await db.query<ShippingRate[]>(
-      `
-      SELECT id
-      FROM shipping_rates
-      WHERE name = ?
-        AND id != ?
-      LIMIT 1
-      `,
-      [
-        name.trim(),
-        shippingRateId,
-      ]
-    );
+    const duplicateResult =
+      await db.query<ShippingRate>(
+        `
+        SELECT id
+        FROM shipping_rates
+        WHERE name = $1
+          AND id != $2
+        LIMIT 1
+        `,
+        [
+          name.trim(),
+          shippingRateId,
+        ]
+      );
+
+    const duplicateRows =
+      duplicateResult.rows;
 
     if (duplicateRows.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          message: "Another shipping rate with this name already exists",
+          message:
+            "Another shipping rate with this name already exists",
         },
         { status: 409 }
       );
@@ -213,14 +239,14 @@ export async function PUT(
     // Update
     // -----------------------------
 
-    await db.query<ResultSetHeader>(
+    await db.query(
       `
       UPDATE shipping_rates
       SET
-        name = ?,
-        rate = ?,
-        status = ?
-      WHERE id = ?
+        name = $1,
+        rate = $2,
+        status = $3
+      WHERE id = $4
       `,
       [
         name.trim(),
@@ -234,33 +260,42 @@ export async function PUT(
     // Get updated record
     // -----------------------------
 
-    const [updatedRows] = await db.query<ShippingRate[]>(
-      `
-      SELECT
-        id,
-        name,
-        rate,
-        status,
-        created_at,
-        updated_at
-      FROM shipping_rates
-      WHERE id = ?
-      `,
-      [shippingRateId]
-    );
+    const updatedResult =
+      await db.query<ShippingRate>(
+        `
+        SELECT
+          id,
+          name,
+          rate,
+          status,
+          created_at,
+          updated_at
+        FROM shipping_rates
+        WHERE id = $1
+        `,
+        [shippingRateId]
+      );
+
+    const updatedRows =
+      updatedResult.rows;
 
     return NextResponse.json({
       success: true,
-      message: "Shipping rate updated successfully",
+      message:
+        "Shipping rate updated successfully",
       data: updatedRows[0],
     });
   } catch (error) {
-    console.error("Update shipping rate error:", error);
+    console.error(
+      "Update shipping rate error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to update shipping rate",
+        message:
+          "Failed to update shipping rate",
       },
       { status: 500 }
     );
@@ -283,7 +318,10 @@ export async function DELETE(
 
     const shippingRateId = Number(id);
 
-    if (!Number.isInteger(shippingRateId) || shippingRateId <= 0) {
+    if (
+      !Number.isInteger(shippingRateId) ||
+      shippingRateId <= 0
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -297,15 +335,18 @@ export async function DELETE(
     // Check existing record
     // -----------------------------
 
-    const [existingRows] = await db.query<ShippingRate[]>(
-      `
-      SELECT id
-      FROM shipping_rates
-      WHERE id = ?
-      LIMIT 1
-      `,
-      [shippingRateId]
-    );
+    const existingResult =
+      await db.query<ShippingRate>(
+        `
+        SELECT id
+        FROM shipping_rates
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [shippingRateId]
+      );
+
+    const existingRows = existingResult.rows;
 
     if (existingRows.length === 0) {
       return NextResponse.json(
@@ -321,10 +362,10 @@ export async function DELETE(
     // Delete
     // -----------------------------
 
-    await db.query<ResultSetHeader>(
+    await db.query(
       `
       DELETE FROM shipping_rates
-      WHERE id = ?
+      WHERE id = $1
       `,
       [shippingRateId]
     );
@@ -334,7 +375,10 @@ export async function DELETE(
       message: "Shipping rate deleted successfully",
     });
   } catch (error) {
-    console.error("Delete shipping rate error:", error);
+    console.error(
+      "Delete shipping rate error:",
+      error
+    );
 
     return NextResponse.json(
       {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import  db  from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 import { RowDataPacket } from "mysql2";
 
@@ -90,7 +90,9 @@ export async function PUT(
 
     const status = String(
       body.status || ""
-    ).trim().toUpperCase();
+    )
+      .trim()
+      .toUpperCase();
 
     // ============================================================
     // VALIDATE STATUS
@@ -115,17 +117,18 @@ export async function PUT(
     // CHECK REVIEW EXISTS
     // ============================================================
 
-    const [reviews] =
-      await db.query<ReviewRow[]>(
-        `
-        SELECT
-          id
-        FROM product_reviews
-        WHERE id = ?
-        LIMIT 1
-        `,
-        [reviewId]
-      );
+    const reviewResult = await db.query<ReviewRow>(
+      `
+      SELECT
+        id
+      FROM product_reviews
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [reviewId]
+    );
+
+    const reviews = reviewResult.rows;
 
     if (reviews.length === 0) {
       return NextResponse.json(
@@ -145,9 +148,9 @@ export async function PUT(
       `
       UPDATE product_reviews
       SET
-        status = ?,
+        status = $1,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = $2
       `,
       [
         status,
