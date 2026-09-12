@@ -163,11 +163,9 @@ export async function POST(req: NextRequest) {
                 // Create new customer account
                 // ---------------------------------------------
 
-                const name =
-                    shipping.name?.trim() || "Guest Customer";
+                const name =  shipping.name?.trim() || "Guest Customer";
 
-                const email =
-                    shipping.email?.trim() || null;
+                const email =  shipping.email?.trim() || null;
 
                 const customerResult = await client.query<{
                     id: number;
@@ -178,15 +176,17 @@ export async function POST(req: NextRequest) {
                         name,
                         email,
                         phone,
+                        status,
                         password
                     )
-                    VALUES ($1, $2, $3, $4)
+                    VALUES ($1, $2, $3, $4, $5)
                     RETURNING id
                     `,
                     [
                         name,
                         email,
                         phone,
+                        "ACTIVE",
                         "",
                     ]
                 );

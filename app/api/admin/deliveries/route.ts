@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const {
-      order_id,
+      order_id: orderNo, // this is the human-readable order number, e.g. "ORD-283441"
       courier_company,
       delivery_date,
       status,
@@ -274,7 +274,7 @@ export async function POST(request: NextRequest) {
     // VALIDATION
     // ============================================================
 
-    if (!order_id) {
+    if (!orderNo) {
       return NextResponse.json(
         {
           success: false,
@@ -308,14 +308,13 @@ export async function POST(request: NextRequest) {
 
     const ordersResult = await db.query(
       `
-      SELECT id, order_status
+      SELECT id, order_no, order_status
       FROM orders
-      WHERE id = $1
+      WHERE order_no = $1
       LIMIT 1
       `,
-      [order_id]
+      [orderNo]
     );
-
     const orders = ordersResult.rows;
 
     if (orders.length === 0) {
@@ -329,6 +328,7 @@ export async function POST(request: NextRequest) {
     }
 
     const currentOrderStatus = orders[0].order_status;
+    const orderPk = orders[0].id; // numeric orders.id, used as FK in deliveries
 
     // Don't create delivery for cancelled order
     if (currentOrderStatus === "CANCELLED") {
@@ -363,7 +363,7 @@ export async function POST(request: NextRequest) {
       WHERE order_id = $1
       LIMIT 1
       `,
-      [order_id]
+      [orderPk]
     );
 
     const existing = existingResult.rows;
@@ -395,7 +395,7 @@ export async function POST(request: NextRequest) {
       RETURNING id
       `,
       [
-        order_id,
+        orderPk,
         courier_company || null,
         delivery_date || null,
         status,
@@ -437,7 +437,7 @@ export async function POST(request: NextRequest) {
         SET order_status = $1
         WHERE id = $2
         `,
-        [newOrderStatus, order_id]
+        [newOrderStatus, orderPk]
       );
     }
 

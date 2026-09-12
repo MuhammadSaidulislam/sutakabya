@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Category } from "@/types/categories";
+import Image from "next/image";
 /* -------------------------------------------------------------------- */
 /*  Static content                                                       */
 /* -------------------------------------------------------------------- */
@@ -170,12 +171,7 @@ export default function Footer({ categories }: FooterProps) {
           {/* BRAND / CONTACT */}
           <div>
             <Link href="/" className="inline-block">
-              <div className="font-serif text-3xl tracking-tight text-ink-900">
-                Kids <span className="italic text-coral-500">&</span> Mom
-              </div>
-              <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.28em] text-ink-400">
-                Little styles. Big smiles.
-              </p>
+                 <Image src="/logo-removebg-preview.png" alt="Logo" width={150} height={80} />
             </Link>
 
             <p className="mt-6 max-w-xs text-sm leading-6 text-ink-500">

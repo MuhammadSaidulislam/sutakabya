@@ -21,6 +21,9 @@ if (!databaseUrl) {
 
 const db = new Pool({
   connectionString: databaseUrl,
+  max: 5,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
   ssl: {
     rejectUnauthorized: false,
   },

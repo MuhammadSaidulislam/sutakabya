@@ -2,16 +2,14 @@
 
 import { Suspense, useCallback, useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, X, Phone, Mail, MapPin, Eye, Ticket } from "lucide-react";
+import { Search, X, Phone, Mail, MapPin, Eye } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import StatusPill from "@/components/StatusPill";
-import ProductThumb from "@/components/ProductThumb";
 import { customers, Customer, getCustomerStats } from "@/lib/data";
 import { TablePage } from "@/components/TablePage";
 import { User } from "@/types/user";
 import { format } from "date-fns";
 import { Badge } from "@/components/Badge";
-import { CouponForm } from "@/types/coupon";
 
 const avatarTones: Record<string, string> = {
   blush: "bg-blush/25 text-blush-deep",
@@ -54,12 +52,6 @@ function PageInner() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [page, setPage] = useState(1);
-  // const [search, setSearch] = useState("");
-  const [couponModalOpen, setCouponModalOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<User>();
-  const [customerCoupons, setCustomerCoupons] = useState<number[]>([]);
-  const [coupons, setCoupons] = useState<CouponForm[]>([]);
-
   const selectedStats = selected ? getCustomerStats(selected.mobile) : null;
 
   const fetchCustomers = useCallback(async () => {
@@ -102,107 +94,6 @@ function PageInner() {
   }, [fetchCustomers]);
 
 
-  /* ------------------------------------------------------------------ */
-  /* Fetch Coupons                                                      */
-  /* ------------------------------------------------------------------ */
-
-  const fetchCoupons = useCallback(async () => {
-    if (initialLoading) {
-      setLoading(true);
-    }
-
-    const start = Date.now();
-
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-        search,
-        status: "ACTIVE",
-      });
-
-      const res = await fetch(
-        `/api/admin/coupons?${params.toString()}`
-      );
-
-      const result = await res.json();
-
-      if (result.success) {
-        setCoupons(result.data || []);
-
-        setTotalPages(
-          result.pagination?.totalPages || 0
-        );
-
-        setTotalItems(
-          result.pagination?.total || 0
-        );
-      }
-    } catch (error) {
-      console.error("Fetch coupons error:", error);
-    } finally {
-      const elapsed = Date.now() - start;
-      const delay = Math.max(1000 - elapsed, 0);
-
-      setTimeout(() => {
-        setLoading(false);
-        setInitialLoading(false);
-      }, delay);
-    }
-  }, [
-    page,
-    limit,
-    search,
-    initialLoading,
-  ]);
-
-  /* ------------------------------------------------------------------ */
-  /* Load Coupons                                                       */
-  /* ------------------------------------------------------------------ */
-
-  useEffect(() => {
-    startTransition(() => {
-      fetchCoupons();
-    });
-  }, [fetchCoupons]);
-
-  // coupon modal
-  const toggleCoupon = async (couponId: number) => {
-    const assigned = customerCoupons.includes(couponId);
-
-    const res = await fetch(
-      `/api/admin/user/${selectedCustomer?.id}`,
-      {
-        method: assigned ? "DELETE" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          coupon_id: couponId,
-        }),
-      }
-    );
-
-    if (!res.ok) return;
-
-    setCustomerCoupons((prev) =>
-      assigned
-        ? prev.filter((id) => id !== couponId)
-        : [...prev, couponId]
-    );
-  };
-
-  const openCouponModal = async (user: User) => {
-    setSelectedCustomer(user);
-    setCouponModalOpen(true);
-
-    // Get coupons already assigned to this customer
-    const res = await fetch(`/api/admin/user/${user.id}`);
-    const data = await res.json();
-
-    setCustomerCoupons(data.coupon_ids || []);
-  };
-
 
   return (
     <>
@@ -224,7 +115,7 @@ function PageInner() {
       </div>
       <div className="space-y-8">
         <TablePage title="Product categories" subtitle="Categories organizing your products" addLabel="Add category"
-          headers={["ID", "Customer", "Total Order", "Total Amount", "Last Order", "Status", "Coupon", "Actions"]}
+          headers={["ID", "Customer", "Total Order", "Total Amount", "Last Order", "Status", "Actions"]}
           page={page}
           onAddClick={() => { }}
           setSearch={setSearch}
@@ -253,14 +144,6 @@ function PageInner() {
               <td className="font-medium">৳ {user.total_spent}</td>
               <td>{user?.last_order ? format(new Date(user.last_order), "dd-MM-yyyy") : "N/A"}</td>
               <td><Badge status={user.status} /></td>
-              <td><button
-                  onClick={() => openCouponModal(user)}
-                  className="cursor-pointer rounded-lg p-2 text-ink-soft hover:bg-sky-deep hover:text-white"
-                  title="Assign coupons"
-                >
-                 Coupon
-                </button>
-                </td>
               <td>
                 
                 <button className="cursor-pointer rounded-lg p-2 text-ink-soft hover:bg-sky-deep hover:text-white">
@@ -363,68 +246,7 @@ function PageInner() {
           </div>
         </div>
       )}
-      {couponModalOpen && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-
-            <div className="mb-5 w-100 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-ink">
-                Assign Coupons
-              </h2>
-              <button onClick={() => setCouponModalOpen(false)} className="text-sm font-medium" >
-                <X />
-              </button>
-            </div>
-
-            <div className="max-h-80 space-y-2 overflow-y-auto">
-              {coupons.map((coupon) => {
-                const couponId = coupon.id;
-                const assigned = couponId !== undefined && customerCoupons.includes(couponId);
-
-                return (
-                  <div
-                    key={couponId ?? coupon.code}
-                    className="flex items-center justify-between rounded-xl border border-border p-3"
-                  >
-                    <div>
-                      <p className="font-semibold text-ink">
-                        {coupon.code}
-                      </p>
-
-                      <p className="text-xs text-ink-soft">
-                        {coupon.discount_percentage}% discount
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => couponId !== undefined && toggleCoupon(couponId)}
-                      className={`relative h-6 w-11 rounded-full transition ${assigned
-                        ? "bg-sky-deep"
-                        : "bg-neutral-300"
-                        }`}
-                    >
-                      <span
-                        className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${assigned
-                          ? "left-6"
-                          : "left-1"
-                          }`}
-                      />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() => setCouponModalOpen(false)}
-              className="mt-5 w-full rounded-xl bg-neutral-100 py-2.5 text-sm font-medium"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
+      
     </>
   );
 }

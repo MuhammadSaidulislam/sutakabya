@@ -26,8 +26,6 @@ const navItems = [
   { href: "/admin/delivery", label: "Delivery", icon: Truck },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
-  { href: "/admin/coupons", label: "Coupons", icon: Ticket },
-  { href: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

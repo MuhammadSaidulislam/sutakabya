@@ -53,9 +53,6 @@ export default function ProductModal({
     best_seller: initialProduct?.best_seller ?? false,
     new_arrival: initialProduct?.new_arrival ?? false,
 
-    // SEO
-    meta_title: initialProduct?.meta_title ?? "",
-    meta_description: initialProduct?.meta_description ?? "",
 
     // Images
     images: initialProduct?.images ?? [],
@@ -180,10 +177,6 @@ export default function ProductModal({
         featured: Boolean(form.featured),
         best_seller: Boolean(form.best_seller),
         new_arrival: Boolean(form.new_arrival),
-
-        // SEO
-        meta_title: form.meta_title,
-        meta_description: form.meta_description,
 
         // Relations
         images: uploadedImages,
@@ -521,31 +514,6 @@ export default function ProductModal({
               />
               New Arrival
             </label>
-
-          </div>
-
-          {/* SEO */}
-          <div className="space-y-4">
-
-            <input placeholder="Meta Title" value={form.meta_title}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  meta_title: e.target.value,
-                }))
-              }
-              className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
-            />
-
-            <textarea rows={3} placeholder="Meta Description" value={form.meta_description}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  meta_description: e.target.value,
-                }))
-              }
-              className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
-            />
 
           </div>
 

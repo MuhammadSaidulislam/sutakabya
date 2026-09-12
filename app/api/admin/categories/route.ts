@@ -29,159 +29,50 @@ export interface SubCategoryInput {
   name: string;
 }
 
+function createSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 // create category
-// create category
+
 export async function POST(req: NextRequest) {
-  const client = await db.connect();
-
-  try {
-    await requireAdmin();
-
-    const body = await req.json();
-
-    const {
-      name,
-      description,
-      subCategories = [],
-    } = body;
-
-    if (!name) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Category name is required.",
-        },
-        { status: 400 }
-      );
+  const client = await db.connect(); try {
+    await requireAdmin(); const body = await req.json();
+    const { name, description, subCategories = [], } = body;
+    if (!name || typeof name !== "string") {
+      return NextResponse.json({ success: false, message: "Category name is required.", }, { status: 400 });
     }
-
-    await client.query("BEGIN");
-
-    // Check duplicate category
-    const existsResult = await client.query<CategoryRow>(
-      `
-        SELECT id
-        FROM categories
-        WHERE name = $1
-        LIMIT 1
-      `,
-      [name]
-    );
-
-    const exists = existsResult.rows;
-
-    if (exists.length > 0) {
+    const categoryName = name.trim();
+    const categorySlug = createSlug(categoryName);
+    if (!categorySlug) {
+      return NextResponse.json({ success: false, message: "Invalid category name.", }, { status: 400 });
+    }
+    await client.query("BEGIN"); // Check duplicate category by name or slug 
+    const existsResult = await client.query<CategoryRow>(` SELECT id FROM categories WHERE name = $1 OR slug = $2 LIMIT 1 `, [categoryName, categorySlug]);
+    if (existsResult.rows.length > 0) {
       await client.query("ROLLBACK");
-
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Category already exists.",
-        },
-        { status: 409 }
-      );
-    }
-
-    // Insert category
-    const result = await client.query<CategoryRow>(
-      `
-        INSERT INTO categories
-        (
-          name,
-          description,
-          created_at,
-          updated_at
-        )
-        VALUES ($1, $2, NOW(), NOW())
-        RETURNING id
-      `,
-      [
-        name,
-        description || null,
-      ]
-    );
-
-    const categoryId = result.rows[0].id;
-
-    // Insert sub categories
-    if (
-      Array.isArray(subCategories) &&
-      subCategories.length > 0
-    ) {
-      const validSubCategories = subCategories.filter(
-        (item: { name?: string }) => item.name?.trim()
-      );
-
-      if (validSubCategories.length > 0) {
+      return NextResponse.json({ success: false, message: "Category already exists.", }, { status: 409 });
+    } // Insert category 
+    const result = await client.query<CategoryRow>(` INSERT INTO categories ( name, slug, description, created_at, updated_at ) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id `, [categoryName, categorySlug, description || null,]);
+    const categoryId = result.rows[0].id; // Insert sub categories
+    if (Array.isArray(subCategories) && subCategories.length > 0) {
+      const validSubCategories = subCategories.filter((item: { name?: string }) => typeof item.name === "string" && item.name.trim()).map((item: { name?: string }) => { const subCategoryName = item.name?.trim() ?? ""; return { name: subCategoryName, slug: createSlug(subCategoryName), }; }).filter((item) => item.slug); if (validSubCategories.length > 0) {
         const values: (number | string | Date)[] = [];
-
-        const placeholders = validSubCategories.map(
-          (
-            item: { name?: string },
-            index
-          ) => {
-            const base = index * 5;
-
-            values.push(
-              categoryId,
-              item.name?.trim() ?? "",
-              "ACTIVE",
-              new Date(),
-              new Date()
-            );
-
-            return `(
-              $${base + 1},
-              $${base + 2},
-              $${base + 3},
-              $${base + 4},
-              $${base + 5}
-            )`;
-          }
-        );
-
-        await client.query(
-          `
-            INSERT INTO sub_categories
-            (
-              category_id,
-              name,
-              status,
-              created_at,
-              updated_at
-            )
-            VALUES ${placeholders.join(", ")}
-          `,
-          values
-        );
+        const placeholders = validSubCategories.map((item, index) => {
+          const base = index * 6; values.push(categoryId, item.name, item.slug, "ACTIVE", new Date(), new Date());
+          return `( $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6} )`;
+        });
+        await client.query(` INSERT INTO sub_categories ( category_id, name, slug, status, created_at, updated_at ) VALUES ${placeholders.join(", ")} `, values);
       }
-    }
-
-    await client.query("COMMIT");
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Category created successfully.",
-        id: categoryId,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    await client.query("ROLLBACK");
-
-    console.error(error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Internal Server Error",
-      },
-      { status: 500 }
-    );
-  } finally {
-    client.release();
-  }
+    } await client.query("COMMIT"); return NextResponse.json({ success: true, message: "Category created successfully.", id: categoryId, name: categoryName, slug: categorySlug, }, { status: 201 });
+  } catch (error) { await client.query("ROLLBACK"); console.error(error); return NextResponse.json({ success: false, message: "Internal Server Error", }, { status: 500 }); }
+  finally { client.release(); }
 }
 
 // categories list
@@ -370,248 +261,25 @@ export async function GET(req: NextRequest) {
 // Update category
 export async function PUT(req: NextRequest) {
   const client = await db.connect();
-
   try {
     await requireAdmin();
-
-    const {
-      id,
-      name,
-      description,
-      subCategories = [],
-    }: {
-      id: number;
-      name: string;
-      description?: string;
-      subCategories: SubCategoryInput[];
-    } = await req.json();
-
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Category ID is required.",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!name.trim()) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Category name is required.",
-        },
-        { status: 400 }
-      );
-    }
-
-    await client.query("BEGIN");
-
-    // =====================================
-    // Check category
-    // =====================================
-
-    const categoryResult = await client.query<CategoryRow>(
-      `
-        SELECT id
-        FROM categories
-        WHERE id = $1
-        LIMIT 1
-      `,
-      [id]
-    );
-
-    const rows = categoryResult.rows;
-
-    if (rows.length === 0) {
-      await client.query("ROLLBACK");
-
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Category not found.",
-        },
-        { status: 404 }
-      );
-    }
-
-    const category = rows[0];
-
-    // =====================================
-    // Duplicate name
-    // =====================================
-
-    const existsResult = await client.query<CategoryRow>(
-      `
-        SELECT id
-        FROM categories
-        WHERE name = $1
-          AND id <> $2
-        LIMIT 1
-      `,
-      [
-        name.trim(),
-        id,
-      ]
-    );
-
-    const exists = existsResult.rows;
-
-    if (exists.length) {
-      await client.query("ROLLBACK");
-
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Category already exists.",
-        },
-        { status: 409 }
-      );
-    }
-
-    // =====================================
-    // Update category
-    // =====================================
-
-    await client.query(
-      `
-        UPDATE categories
-        SET
-          name = $1,
-          description = $2,
-          updated_at = NOW()
-        WHERE id = $3
-      `,
-      [
-        name.trim(),
-        description || null,
-        id,
-      ]
-    );
-
-    // =====================================
-    // Existing sub categories
-    // =====================================
-
-    const existingSubsResult =
-      await client.query<SubCategoryRow>(
-        `
-          SELECT *
-          FROM sub_categories
-          WHERE category_id = $1
-        `,
-        [id]
-      );
-
-    const existingSubs = existingSubsResult.rows;
-
-    const existingMap = new Map<
-      number,
-      SubCategoryRow
-    >();
-
-    existingSubs.forEach((item) => {
-      existingMap.set(item.id, item);
-    });
-
-    const requestIds = new Set<number>();
-
-    // =====================================
-    // Update / Insert
-    // =====================================
-
-    for (const item of subCategories) {
-      const subName = item.name.trim();
-
-      if (!subName) continue;
-
-      if (item.id) {
-        requestIds.add(item.id);
-
-        await client.query(
-          `
-            UPDATE sub_categories
-            SET
-              name = $1,
-              updated_at = NOW()
-            WHERE id = $2
-              AND category_id = $3
-          `,
-          [
-            subName,
-            item.id,
-            id,
-          ]
-        );
-      } else {
-        await client.query(
-          `
-            INSERT INTO sub_categories
-            (
-              category_id,
-              name,
-              status,
-              created_at,
-              updated_at
-            )
-            VALUES
-            (
-              $1,
-              $2,
-              'ACTIVE',
-              NOW(),
-              NOW()
-            )
-          `,
-          [
-            id,
-            subName,
-          ]
-        );
-      }
-    }
-
-    // =====================================
-    // Delete removed
-    // =====================================
-
-    for (const existing of existingSubs) {
-      if (!requestIds.has(existing.id)) {
-        await client.query(
-          `
-            DELETE FROM sub_categories
-            WHERE id = $1
-          `,
-          [existing.id]
-        );
-      }
-    }
-
-    await client.query("COMMIT");
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Category updated successfully.",
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    await client.query("ROLLBACK");
-
-    console.error(error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Internal Server Error",
-      },
-      { status: 500 }
-    );
-  } finally {
-    client.release();
-  }
+    const { id, name, description, subCategories = [], }: { id: number; name: string; description?: string; subCategories: SubCategoryInput[]; } = await req.json(); if (!id) { return NextResponse.json({ success: false, message: "Category ID is required.", }, { status: 400 }); } if (!name || !name.trim()) { return NextResponse.json({ success: false, message: "Category name is required.", }, { status: 400 }); }
+    const categoryName = name.trim();
+    const categorySlug = createSlug(categoryName); if (!categorySlug) { return NextResponse.json({ success: false, message: "Invalid category name.", }, { status: 400 }); } await client.query("BEGIN");
+    // ===================================== // Check category // ===================================== 
+    const categoryResult = await client.query<CategoryRow>(` SELECT id FROM categories WHERE id = $1 LIMIT 1 `, [id]); if (categoryResult.rows.length === 0) { await client.query("ROLLBACK"); return NextResponse.json({ success: false, message: "Category not found.", }, { status: 404 }); }
+    // ===================================== // Duplicate category // ===================================== 
+    const existsResult = await client.query<CategoryRow>(` SELECT id FROM categories WHERE (name = $1 OR slug = $2) AND id <> $3 LIMIT 1 `, [categoryName, categorySlug, id,]); if (existsResult.rows.length > 0) { await client.query("ROLLBACK"); return NextResponse.json({ success: false, message: "Category already exists.", }, { status: 409 }); }
+    // ===================================== // Update category // ===================================== 
+    await client.query(` UPDATE categories SET name = $1, slug = $2, description = $3, updated_at = NOW() WHERE id = $4 `, [categoryName, categorySlug, description || null, id,]);
+    // ===================================== // Existing sub categories // ===================================== 
+    const existingSubsResult = await client.query<SubCategoryRow>(` SELECT * FROM sub_categories WHERE category_id = $1 `, [id]); const existingSubs = existingSubsResult.rows; const requestIds = new Set<number>();
+    // ===================================== // Update / Insert sub categories // ===================================== 
+    for (const item of subCategories) { if (!item.name || !item.name.trim()) { continue; } const subName = item.name.trim(); const subSlug = createSlug(subName); if (!subSlug) { continue; } if (item.id) { requestIds.add(item.id); await client.query(` UPDATE sub_categories SET name = $1, slug = $2, updated_at = NOW() WHERE id = $3 AND category_id = $4 `, [subName, subSlug, item.id, id,]); } else { await client.query(` INSERT INTO sub_categories ( category_id, name, slug, status, created_at, updated_at ) VALUES ( $1, $2, $3, 'ACTIVE', NOW(), NOW() ) `, [id, subName, subSlug,]); } }
+    // ===================================== // Delete removed sub categories // ====================================
+    for (const existing of existingSubs) { if (!requestIds.has(existing.id)) { await client.query(` DELETE FROM sub_categories WHERE id = $1 AND category_id = $2 `, [existing.id, id,]); } } await client.query("COMMIT"); return NextResponse.json({ success: true, message: "Category updated successfully.", id, name: categoryName, slug: categorySlug, }, { status: 200 });
+  } catch (error) { await client.query("ROLLBACK"); console.error(error); return NextResponse.json({ success: false, message: "Internal Server Error", }, { status: 500 }); }
+  finally { client.release(); }
 }
 
 // Delete category
