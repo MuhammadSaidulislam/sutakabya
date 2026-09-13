@@ -39,10 +39,9 @@ const helpLinks = [
 ];
 
 const socials = [
-  { label: "Instagram", icon: InstagramIcon, href: "https://instagram.com" },
-  { label: "Facebook", icon: FacebookIcon, href: "https://facebook.com" },
-  { label: "Pinterest", icon: PinterestIcon, href: "https://pinterest.com" },
-  { label: "YouTube", icon: YoutubeIcon, href: "https://youtube.com" },
+  { label: "Facebook", icon: FacebookIcon, href: "https://www.facebook.com/sutakabya" },
+  { label: "YouTube", icon: YoutubeIcon, href: "https://www.youtube.com/@sutakabya" },
+  { label: "TikTok", icon: TikTokIcon, href: "https://www.tiktok.com/@sutakabya" },
 ];
 
 
@@ -85,19 +84,30 @@ function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function PinterestIcon(props: React.SVGProps<SVGSVGElement>) {
+function TikTokIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M12 2C6.5 2 3.7 5.9 3.7 9.1c0 1.9 1 4.3 2.7 5-.2-.9-.4-2.1.1-3 .4-.9 2.4-9 2.4-9-.5-.9-.5-2.1 0-2.9.7-1.1 2.5-1.1 2.5.5 0 1-.6 2.5-1 3.9-.3 1.2.6 2.2 1.8 2.2 2.1 0 3.6-2.5 3.6-5.5 0-2.3-1.7-4-4.7-4-3.5 0-5.6 2.4-5.6 5 0 1 .3 1.6.7 2.1.2.2.2.3.1.6l-.3 1c-.1.3-.3.4-.6.3-1.4-.6-2-2.2-2-3.9 0-2.9 2.5-6.4 7.4-6.4 4 0 6.7 2.8 6.7 5.9 0 4-2.2 7-5.5 7-1.1 0-2.1-.6-2.4-1.2 0 0-.6 2.3-.7 2.8-.2 1-.6 1.9-1.1 2.7A10 10 0 1 0 12 2Z" />
+      <path d="M19.6 7.2a5.8 5.8 0 0 1-3.5-1.2v7.1a5.1 5.1 0 1 1-4.4-5v2.8a2.3 2.3 0 1 0 1.6 2.2V2h2.8c.2 1.8 1.3 3.2 3.5 3.7v1.5Z" />
     </svg>
   );
 }
 
 function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M22 12c0-2.6-.2-4-.6-4.9-.3-.7-.9-1.3-1.6-1.6C18.6 5 12 5 12 5s-6.6 0-7.8.5c-.7.3-1.3.9-1.6 1.6C2.2 8 2 9.4 2 12s.2 4 .6 4.9c.3.7.9 1.3 1.6 1.6C5.4 19 12 19 12 19s6.6 0 7.8-.5c.7-.3 1.3-.9 1.6-1.6.4-.9.6-2.3.6-4.9Z" />
-      <path d="M10 9.3v5.4l4.8-2.7L10 9.3Z" fill="#f7f3ed" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.122C19.505 3.5 12 3.5 12 3.5s-7.505 0-9.376.564A3.016 3.016 0 0 0 .502 6.186C0 8.057 0 12 0 12s0 3.943.502 5.814a3.016 3.016 0 0 0 2.122 2.122C4.495 20.5 12 20.5 12 20.5s7.505 0 9.376-.564a3.016 3.016 0 0 0 2.122-2.122C24 15.943 24 12 24 12s0-3.943-.502-5.814Z"
+      />
+
+      <path
+        d="M9.545 15.568V8.432L15.818 12l-6.273 3.568Z"
+        fill="#1C1C1B"
+      />
     </svg>
   );
 }
@@ -171,7 +181,7 @@ export default function Footer({ categories }: FooterProps) {
           {/* BRAND / CONTACT */}
           <div>
             <Link href="/" className="inline-block">
-                 <Image src="/logo-removebg-preview.png" alt="Logo" width={150} height={80} />
+                 <Image src="/logo-footer.png" alt="Logo" width={150} height={80} />
             </Link>
 
             <p className="mt-6 max-w-xs text-sm leading-6 text-ink-500">
@@ -179,37 +189,7 @@ export default function Footer({ categories }: FooterProps) {
               ones and the people who love them.
             </p>
 
-            <div className="mt-7 space-y-4">
-              <a href="tel:+18001234567"  className="group flex items-center gap-3 text-sm text-ink-600 transition-colors hover:text-coral-500">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 bg-white transition-colors group-hover:border-coral-200">
-                  <Phone size={14} />
-                </span>
-                <span>
-                  <span className="block text-[9px] uppercase tracking-[0.15em] text-ink-400">
-                    Customer Care
-                  </span>
-                  <span className="font-medium">(+1) 800 123 4567</span>
-                </span>
-              </a>
-
-              <div className="flex items-start gap-3 text-sm text-ink-500">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-100 bg-white">
-                  <MapPin size={14} />
-                </span>
-                <p className="pt-1 leading-5">
-                  1600 Pennsylvania Avenue NW,
-                  <br />
-                  Washington, DC 20500
-                </p>
-              </div>
-
-              <a  href="mailto:hello@kidsandmom.com"   className="flex items-center gap-3 text-sm text-ink-500 transition-colors hover:text-coral-500">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 bg-white">
-                  <Mail size={14} />
-                </span>
-                hello@kidsandmom.com
-              </a>
-            </div>
+         
           </div>
 
           <FooterColumn title="Information" links={infoLinks} />
@@ -227,14 +207,39 @@ export default function Footer({ categories }: FooterProps) {
 
             <div className="mt-3 h-px w-7 bg-coral-500" />
 
-            <p className="mt-6 text-sm leading-6 text-ink-500">
-              Come say hello. Discover new collections, little moments,
-              styling inspiration, and family stories.
-            </p>
+               <div className="mt-7 space-y-4">
+              <a href="tel:+8801929420564"  className="group flex items-center gap-3 text-sm text-ink-600 transition-colors hover:text-coral-500">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 bg-white transition-colors group-hover:border-coral-200">
+                  <Phone size={14} />
+                </span>
+                <span>
+                  <span className="block text-[9px] uppercase tracking-[0.15em] text-ink-400">
+                    Customer Care
+                  </span>
+                  <span className="font-medium">01929420564</span>
+                </span>
+              </a>
+
+              <div className="flex items-start gap-3 text-sm text-ink-500">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-100 bg-white">
+                  <MapPin size={14} />
+                </span>
+                <p className="pt-1 leading-5">
+                ৮১(আন্ডারগ্রাউন্ড), বিক্রমপুর প্লাজা শপিংমল, জুরাইন,ঢাকা
+                </p>
+              </div>
+
+              <a  href="mailto:hello@kidsandmom.com"   className="flex items-center gap-3 text-sm text-ink-500 transition-colors hover:text-coral-500">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 bg-white">
+                  <Mail size={14} />
+                </span>
+               sutakabya@gmail.com
+              </a>
+            </div>
 
             <div className="mt-6 flex gap-2.5">
               {socials.map(({ label, icon: Icon, href }) => (
-                <a  key={label}  href={href}  target="_blank" rel="noreferrer"   aria-label={label}   className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-all duration-200 hover:-translate-y-0.5 hover:border-coral-500 hover:bg-coral-500 hover:text-white">
+                <a  key={label}  href={href}  target="_blank" rel="noreferrer"   aria-label={label}   className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-200  text-ink-600 transition-all duration-200 hover:-translate-y-0.5 hover:border-coral-500 hover:bg-coral-500 hover:text-white">
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
@@ -251,7 +256,7 @@ export default function Footer({ categories }: FooterProps) {
       <div className="border-t border-white/10 bg-ink-900">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 sm:px-8 md:flex-row md:items-center md:justify-between">
           <p className="text-[10px] uppercase tracking-[0.12em] text-cream-200/60">
-            © 2026 Kids & Mom. All rights reserved.
+            © 2026 Sutakabya. All rights reserved.
           </p>
           <p className="text-[10px] text-cream-200/40">
             Crafted with care for growing families.

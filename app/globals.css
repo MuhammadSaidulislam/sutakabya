@@ -17,8 +17,8 @@
   --color-rose-danger: #c66b6b;
   --color-border: #ece4d8;
   --color-heart-red: rgb(236, 14, 77);
-  --color-brand-pink: rgb(241 108 139);
-  --color-brand-teal: rgb(18 140 140);
+  --color-brand-pink: rgb(29, 29, 29);
+  --color-brand-teal: rgb(18, 140, 140);
 }
 
 @theme inline {

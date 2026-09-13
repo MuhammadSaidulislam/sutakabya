@@ -1,10 +1,9 @@
 
 'use client';
 import { motion, useScroll, useSpring } from 'framer-motion';
-import { Truck, Banknote, RefreshCcw, Headset } from 'lucide-react';
+import { Banknote, RefreshCcw, Headset } from 'lucide-react';
 
 const items = [
-    { icon: Truck, label: 'Free Shipping on orders over ৳1500' },
     { icon: Banknote, label: 'Cash on Delivery' },
     { icon: RefreshCcw, label: 'Easy Return' },
     { icon: Headset, label: 'Need Help? +880 1234 567890' },
