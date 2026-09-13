@@ -35,9 +35,6 @@ export async function GET(
         p.category_id,
         c.name AS category_name,
 
-        p.sub_category_id,
-        sc.name AS sub_category_name,
-
         p.name,
         p.slug,
         p.sku,
@@ -71,9 +68,6 @@ export async function GET(
 
       INNER JOIN categories c
         ON c.id = p.category_id
-
-      INNER JOIN sub_categories sc
-        ON sc.id = p.sub_category_id
 
       LEFT JOIN (
         SELECT

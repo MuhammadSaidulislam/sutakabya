@@ -177,7 +177,7 @@ export default function Footer({ categories }: FooterProps) {
           MAIN FOOTER
       ===================================================== */}
       <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-20">
-        <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.15fr] lg:gap-10">
+        <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1.15fr] lg:gap-6">
           {/* BRAND / CONTACT */}
           <div>
             <Link href="/" className="inline-block">
@@ -193,10 +193,7 @@ export default function Footer({ categories }: FooterProps) {
           </div>
 
           <FooterColumn title="Information" links={infoLinks} />
-          <FooterColumn title="Categories"   links={categories.map((category) => ({
-    label: category.name,
-    href: `/category/${category.name.toLowerCase().replace(/\s+/g, "-")}`,
-  }))} />
+          <FooterColumn title="Categories"   links={categories.map((category) => ({  label: category.name,  href: `/category/${category.name.toLowerCase().replace(/\s+/g, "-")}`, }))} />
           <FooterColumn title="Help & FAQs" links={helpLinks} />
 
           {/* SOCIAL */}
@@ -209,19 +206,16 @@ export default function Footer({ categories }: FooterProps) {
 
                <div className="mt-7 space-y-4">
               <a href="tel:+8801929420564"  className="group flex items-center gap-3 text-sm text-ink-600 transition-colors hover:text-coral-500">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 bg-white transition-colors group-hover:border-coral-200">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 transition-colors group-hover:border-coral-200">
                   <Phone size={14} />
                 </span>
                 <span>
-                  <span className="block text-[9px] uppercase tracking-[0.15em] text-ink-400">
-                    Customer Care
-                  </span>
                   <span className="font-medium">01929420564</span>
                 </span>
               </a>
 
               <div className="flex items-start gap-3 text-sm text-ink-500">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-100 bg-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-100">
                   <MapPin size={14} />
                 </span>
                 <p className="pt-1 leading-5">
@@ -229,8 +223,8 @@ export default function Footer({ categories }: FooterProps) {
                 </p>
               </div>
 
-              <a  href="mailto:hello@kidsandmom.com"   className="flex items-center gap-3 text-sm text-ink-500 transition-colors hover:text-coral-500">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100 bg-white">
+              <a  href="mailto:sutakabya@gmail.com"  className="flex items-center gap-3 text-sm text-ink-500 transition-colors hover:text-coral-500">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-100">
                   <Mail size={14} />
                 </span>
                sutakabya@gmail.com

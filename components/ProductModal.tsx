@@ -311,7 +311,7 @@ export default function ProductModal({
           </div>
 
           {/* Category */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Category</label>
@@ -325,7 +325,7 @@ export default function ProductModal({
               </select>
             </div>
 
-            <div>
+            {/* <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Sub Category</label>
             {subCategories.length ? <select value={form.sub_category_id}
                 onChange={(e) =>
@@ -343,7 +343,7 @@ export default function ProductModal({
                   </option>
                 ))}
               </select>  : initialProduct?.sub_category_name } 
-            </div>
+            </div> */}
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Status</label>

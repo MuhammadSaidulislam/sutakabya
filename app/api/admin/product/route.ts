@@ -75,7 +75,6 @@ export async function POST(req: NextRequest) {
 
     if (
       !category_id ||
-      !sub_category_id ||
       !name ||
       price == null ||
       stock == null ||
@@ -117,26 +116,26 @@ export async function POST(req: NextRequest) {
 
     // Sub Category
 
-    const subCategoryResult = await client.query(
-      `SELECT id
-       FROM sub_categories
-       WHERE id = $1
-       AND category_id = $2
-       LIMIT 1`,
-      [sub_category_id, category_id]
-    );
+    // const subCategoryResult = await client.query(
+    //   `SELECT id
+    //    FROM sub_categories
+    //    WHERE id = $1
+    //    AND category_id = $2
+    //    LIMIT 1`,
+    //   [sub_category_id, category_id]
+    // );
 
-    if (subCategoryResult.rows.length === 0) {
-      await client.query("ROLLBACK");
+    // if (subCategoryResult.rows.length === 0) {
+    //   await client.query("ROLLBACK");
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Sub category not found.",
-        },
-        { status: 404 }
-      );
-    }
+    //   return NextResponse.json(
+    //     {
+    //       success: false,
+    //       message: "Sub category not found.",
+    //     },
+    //     { status: 404 }
+    //   );
+    // }
 
     // Duplicate Name
 
@@ -1106,7 +1105,6 @@ export async function PUT(req: NextRequest) {
 
     if (
       !category_id ||
-      !sub_category_id ||
       !name ||
       !slug ||
       !sku ||

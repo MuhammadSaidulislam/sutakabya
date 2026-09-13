@@ -9,9 +9,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { monthlySales } from "@/lib/data";
 
-export default function SalesChart() {
+
+export default function SalesChart({monthlySales}: {monthlySales: {month: string, sales: number, orders: number}[]}) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <AreaChart data={monthlySales} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>

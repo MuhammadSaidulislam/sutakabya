@@ -51,9 +51,9 @@ export default function SettingsPage() {
   // ============================================================
   // FETCH SHIPPING RATES
   // ============================================================
-const fetchShippingRates = useCallback(async () => {
+  const fetchShippingRates = useCallback(async () => {
 
-     try {
+    try {
       setShippingLoading(true);
 
       const response = await fetch(
@@ -81,12 +81,12 @@ const fetchShippingRates = useCallback(async () => {
   }, []);
 
 
-   useEffect(() => {
+  useEffect(() => {
     startTransition(() => {
       fetchShippingRates();
     });
   }, [fetchShippingRates]);
- 
+
 
   // ============================================================
   // STORE SETTINGS
@@ -331,347 +331,270 @@ const fetchShippingRates = useCallback(async () => {
   return (
     <div>
       <PageHeader
-        title="Store settings"
+        title="Shipping settings"
         description="Basic information shown to your customers"
       />
-<section className="grid grid-cols-1 gap-5 md:grid-cols-2"> 
-      {/* ====================================================== */}
-      {/* STORE SETTINGS */}
-      {/* ====================================================== */}
-      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
-        <form onSubmit={handleSaveSettings} >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* STORE NAME */}
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2">
 
+        {/* ====================================================== */}
+        {/* SHIPPING RATES */}
+        {/* ====================================================== */}
+
+        <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+          {/* HEADER */}
+
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-ink">
-                Store name
-              </label>
+              <h2 className="font-display text-[16px] font-semibold text-ink">
+                Shipping rates
+              </h2>
 
-              <input
-                value={storeName}
-                onChange={(e) =>
-                  setStoreName(e.target.value)
-                }
-                className="w-full rounded-xl border border-border bg-cream px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-blush-deep"
-              />
-            </div>
-
-            {/* EMAIL */}
-
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-ink">
-                Support email
-              </label>
-
-              <input
-                type="email"
-                value={supportEmail}
-                onChange={(e) =>
-                  setSupportEmail(e.target.value)
-                }
-                className="w-full rounded-xl border border-border bg-cream px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-blush-deep"
-              />
-            </div>
-
-          </div>
-
-          {/* ADDRESS */}
-
-          <div className="mt-4">
-            <label className="mb-1.5 block text-[13px] font-medium text-ink">
-              Store address
-            </label>
-
-            <textarea
-              rows={2}
-              value={storeAddress}
-              onChange={(e) =>
-                setStoreAddress(e.target.value)
-              }
-              className="w-full rounded-xl border border-border bg-cream px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-blush-deep"
-            />
-          </div>
-
-          {/* SAVE */}
-
-          <div className="mt-6 flex items-center gap-3">
-            <button
-              type="submit"
-              className="rounded-xl bg-blush-deep px-5 py-2.5 text-[14px] font-semibold text-surface hover:bg-blush-deep/90"
-            >
-              Save changes
-            </button>
-
-            {saved && (
-              <span className="text-[13px] font-medium text-sage-deep">
-                Settings saved
-              </span>
-            )}
-          </div>
-        </form>
-      </div>
-
-
-      {/* ====================================================== */}
-      {/* SHIPPING RATES */}
-      {/* ====================================================== */}
-
-      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
-        {/* HEADER */}
-
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-[16px] font-semibold text-ink">
-              Shipping rates
-            </h2>
-
-            <p className="mt-1 text-[12px] text-ink-soft">
-              Manage delivery charges based on location.
-            </p>
-          </div>
-
-          {!showShippingForm && (
-            <button
-              type="button"
-              onClick={() => {
-                resetShippingForm();
-                setShowShippingForm(true);
-              }}
-              className="flex items-center gap-1.5 rounded-xl bg-blush-deep px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-blush-deep/90"
-            >
-              <Plus size={15} />
-              Add rate
-            </button>
-          )}
-        </div>
-
-        {/* ==================================================== */}
-        {/* SHIPPING FORM */}
-        {/* ==================================================== */}
-
-        {showShippingForm && (
-          <form
-            onSubmit={handleSaveShipping}
-            className="mt-5 rounded-xl border border-border bg-cream p-4"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold text-ink">
-                {editingShippingId
-                  ? "Edit shipping rate"
-                  : "Add shipping rate"}
-              </h3>
-
-              <button
-                type="button"
-                onClick={resetShippingForm}
-                className="rounded-lg p-1.5 text-ink-soft hover:bg-surface hover:text-ink"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {/* NAME */}
-
-              <div className="sm:col-span-1">
-                <label className="mb-1.5 block text-[12px] font-medium text-ink">
-                  Area
-                </label>
-
-                <input
-                  value={shippingName}
-                  onChange={(e) =>
-                    setShippingName(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Inside Dhaka"
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] outline-none focus:border-blush-deep"
-                />
-              </div>
-
-              {/* RATE */}
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-ink">
-                  Shipping cost
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={shippingRate}
-                  onChange={(e) =>
-                    setShippingRate(
-                      e.target.value
-                    )
-                  }
-                  placeholder="70"
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] outline-none focus:border-blush-deep"
-                />
-              </div>
-
-              {/* STATUS */}
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-ink">
-                  Status
-                </label>
-
-                <select
-                  value={shippingStatus}
-                  onChange={(e) =>
-                    setShippingStatus(
-                      e.target.value as
-                      | "ACTIVE"
-                      | "INACTIVE"
-                    )
-                  }
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] outline-none focus:border-blush-deep"
-                >
-                  <option value="ACTIVE">
-                    Active
-                  </option>
-
-                  <option value="INACTIVE">
-                    Inactive
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {shippingMessage && (
-              <p className="mt-3 text-[12px] font-medium text-red-500">
-                {shippingMessage}
+              <p className="mt-1 text-[12px] text-ink-soft">
+                Manage delivery charges based on location.
               </p>
-            )}
+            </div>
 
-            <div className="mt-4 flex justify-end gap-2">
+            {!showShippingForm && (
               <button
                 type="button"
-                onClick={resetShippingForm}
-                className="rounded-xl border border-border px-4 py-2 text-[12px] font-semibold text-ink hover:bg-surface"
+                onClick={() => {
+                  resetShippingForm();
+                  setShowShippingForm(true);
+                }}
+                className="flex items-center gap-1.5 rounded-xl bg-blush-deep px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-blush-deep/90"
               >
-                Cancel
+                <Plus size={15} />
+                Add rate
               </button>
+            )}
+          </div>
 
-              <button
-                type="submit"
-                disabled={shippingSaving}
-                className="rounded-xl bg-blush-deep px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-50"
-              >
-                {shippingSaving
-                  ? "Saving..."
-                  : editingShippingId
-                    ? "Update rate"
-                    : "Add rate"}
-              </button>
-            </div>
-          </form>
-        )}
+          {/* ==================================================== */}
+          {/* SHIPPING FORM */}
+          {/* ==================================================== */}
 
-        {/* ==================================================== */}
-        {/* SHIPPING LIST */}
-        {/* ==================================================== */}
+          {showShippingForm && (
+            <form
+              onSubmit={handleSaveShipping}
+              className="mt-5 rounded-xl border border-border bg-cream p-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-[13px] font-semibold text-ink">
+                  {editingShippingId
+                    ? "Edit shipping rate"
+                    : "Add shipping rate"}
+                </h3>
 
-        <div className="mt-5 overflow-hidden rounded-xl border border-border">
-          {shippingLoading ? (
-            <div className="px-4 py-8 text-center text-[12px] text-ink-soft">
-              Loading shipping rates...
-            </div>
-          ) : shippingRates.length === 0 ? (
-            <div className="px-4 py-8 text-center text-[12px] text-ink-soft">
-              No shipping rates found.
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {shippingRates.map(
-                (shipping) => (
-                  <div
-                    key={shipping.id}
-                    className="flex items-center justify-between gap-4 px-4 py-3.5"
+                <button
+                  type="button"
+                  onClick={resetShippingForm}
+                  className="rounded-lg p-1.5 text-ink-soft hover:bg-surface hover:text-ink"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/* NAME */}
+
+                <div className="sm:col-span-1">
+                  <label className="mb-1.5 block text-[12px] font-medium text-ink">
+                    Area
+                  </label>
+
+                  <input
+                    value={shippingName}
+                    onChange={(e) =>
+                      setShippingName(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Inside Dhaka"
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] outline-none focus:border-blush-deep"
+                  />
+                </div>
+
+                {/* RATE */}
+
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-medium text-ink">
+                    Shipping cost
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={shippingRate}
+                    onChange={(e) =>
+                      setShippingRate(
+                        e.target.value
+                      )
+                    }
+                    placeholder="70"
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] outline-none focus:border-blush-deep"
+                  />
+                </div>
+
+                {/* STATUS */}
+
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-medium text-ink">
+                    Status
+                  </label>
+
+                  <select
+                    value={shippingStatus}
+                    onChange={(e) =>
+                      setShippingStatus(
+                        e.target.value as
+                        | "ACTIVE"
+                        | "INACTIVE"
+                      )
+                    }
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] outline-none focus:border-blush-deep"
                   >
-                    {/* INFO */}
+                    <option value="ACTIVE">
+                      Active
+                    </option>
 
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-ink">
-                        {shipping.name}
-                      </p>
+                    <option value="INACTIVE">
+                      Inactive
+                    </option>
+                  </select>
+                </div>
+              </div>
 
-                      <p className="mt-0.5 text-[12px] text-ink-soft">
-                        Shipping cost: ৳{" "}
-                        {Number(
-                          shipping.rate
-                        ).toFixed(2)}
-                      </p>
-                    </div>
+              {shippingMessage && (
+                <p className="mt-3 text-[12px] font-medium text-red-500">
+                  {shippingMessage}
+                </p>
+              )}
 
-                    {/* RIGHT */}
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={resetShippingForm}
+                  className="rounded-xl border border-border px-4 py-2 text-[12px] font-semibold text-ink hover:bg-surface"
+                >
+                  Cancel
+                </button>
 
-                    <div className="flex shrink-0 items-center gap-2">
-                      {/* STATUS */}
+                <button
+                  type="submit"
+                  disabled={shippingSaving}
+                  className="rounded-xl bg-blush-deep px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-50"
+                >
+                  {shippingSaving
+                    ? "Saving..."
+                    : editingShippingId
+                      ? "Update rate"
+                      : "Add rate"}
+                </button>
+              </div>
+            </form>
+          )}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleToggleShipping(
-                            shipping
-                          )
-                        }
-                        className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${shipping.status ===
+          {/* ==================================================== */}
+          {/* SHIPPING LIST */}
+          {/* ==================================================== */}
+
+          <div className="mt-5 overflow-hidden rounded-xl border border-border">
+            {shippingLoading ? (
+              <div className="px-4 py-8 text-center text-[12px] text-ink-soft">
+                Loading shipping rates...
+              </div>
+            ) : shippingRates.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[12px] text-ink-soft">
+                No shipping rates found.
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {shippingRates.map(
+                  (shipping) => (
+                    <div
+                      key={shipping.id}
+                      className="flex items-center justify-between gap-4 px-4 py-3.5"
+                    >
+                      {/* INFO */}
+
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold text-ink">
+                          {shipping.name}
+                        </p>
+
+                        <p className="mt-0.5 text-[12px] text-ink-soft">
+                          Shipping cost: ৳{" "}
+                          {Number(
+                            shipping.rate
+                          ).toFixed(2)}
+                        </p>
+                      </div>
+
+                      {/* RIGHT */}
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        {/* STATUS */}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleShipping(
+                              shipping
+                            )
+                          }
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${shipping.status ===
                             "ACTIVE"
                             ? "bg-emerald-100 text-emerald-700"
                             : "bg-gray-100 text-gray-500"
-                          }`}
-                      >
-                        {shipping.status ===
-                          "ACTIVE"
-                          ? "Active"
-                          : "Inactive"}
-                      </button>
+                            }`}
+                        >
+                          {shipping.status ===
+                            "ACTIVE"
+                            ? "Active"
+                            : "Inactive"}
+                        </button>
 
-                      {/* EDIT */}
+                        {/* EDIT */}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleEditShipping(
-                            shipping
-                          )
-                        }
-                        className="rounded-lg p-2 text-ink-soft hover:bg-sky-deep hover:text-white"
-                        title="Edit"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEditShipping(
+                              shipping
+                            )
+                          }
+                          className="rounded-lg p-2 text-ink-soft hover:bg-sky-deep hover:text-white"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
 
-                      {/* DELETE */}
+                        {/* DELETE */}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleDeleteShipping(
-                            shipping.id
-                          )
-                        }
-                        className="rounded-lg p-2 text-ink-soft hover:bg-red-500 hover:text-white"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDeleteShipping(
+                              shipping.id
+                            )
+                          }
+                          className="rounded-lg p-2 text-ink-soft hover:bg-red-500 hover:text-white"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )
-              )}
-            </div>
-          )}
+                  )
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
 
-    </section>
-     </div>
+      </section>
+    </div>
   );
 }

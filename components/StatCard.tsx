@@ -16,7 +16,7 @@ export default function StatCard({
   prefix = "",
 }: {
   label: string;
-  value: string;
+  value?: string;
   change: number;
   icon: LucideIcon;
   tone?: "blush" | "sage" | "honey" | "sky";

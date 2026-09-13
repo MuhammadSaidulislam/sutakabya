@@ -49,8 +49,8 @@ export default function Hero() {
   const slide = slides[index];
 
   return (
-    <section className="relative mx-auto mt-4 max-w-7xl overflow-hidden rounded-3xl sm:mt-6 sm:px-4 lg:px-8">
-      <div className="relative min-h-[560px] overflow-hidden rounded-3xl shadow-card sm:min-h-[620px]">
+    <section className="relative mx-auto overflow-hidden">
+      <div className="relative min-h-[560px] overflow-hidden shadow-card sm:min-h-[620px]">
         {/* ---------------- full-bleed background image, slow ken-burns zoom ---------------- */}
         <AnimatePresence mode="sync">
           <motion.div
