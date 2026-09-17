@@ -6,7 +6,7 @@ import { Banknote, RefreshCcw, Headset } from 'lucide-react';
 const items = [
     { icon: Banknote, label: 'Cash on Delivery' },
     { icon: RefreshCcw, label: 'Easy Return' },
-    { icon: Headset, label: 'Need Help? +880 1234 567890' },
+    { icon: Headset, label: 'Need Help? 01929420564' },
 ];
 
 export default function TopBar() {
