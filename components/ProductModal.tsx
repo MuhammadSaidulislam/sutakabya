@@ -409,7 +409,7 @@ export default function ProductModal({
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
-                    price: Number(e.target.value),
+                    price:  e.target.value === "" ? undefined : Number(e.target.value),
                   }))
                 }
                 className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
@@ -422,7 +422,7 @@ export default function ProductModal({
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
-                    cost_price: Number(e.target.value),
+                    cost_price:  e.target.value === "" ? undefined : Number(e.target.value),
                   }))
                 }
                 className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
@@ -435,7 +435,7 @@ export default function ProductModal({
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
-                    offer_price: Number(e.target.value),
+                    offer_price:  e.target.value === "" ? undefined : Number(e.target.value),
                   }))
                 }
                 className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
@@ -449,11 +449,11 @@ export default function ProductModal({
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Stock</label>
-              <input type="number" value={form.stock}
+              <input type="number" value={form.stock ?? ""}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
-                    stock: Number(e.target.value),
+                    stock:  e.target.value === "" ? undefined : Number(e.target.value),
                   }))
                 }
                 className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
