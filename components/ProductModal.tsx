@@ -405,7 +405,7 @@ export default function ProductModal({
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Selling Price</label>
 
-              <input type="number" min={0} value={form.price}
+              <input type="number" value={form.price}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
@@ -418,7 +418,7 @@ export default function ProductModal({
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Cost Price</label>
-              <input type="number" min={0} value={form.cost_price}
+              <input type="number" value={form.cost_price}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
@@ -431,7 +431,7 @@ export default function ProductModal({
 
              <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Offer Price</label>
-              <input type="number" min={0} value={form.offer_price}
+              <input type="number" value={form.offer_price}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
@@ -449,7 +449,7 @@ export default function ProductModal({
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Stock</label>
-              <input type="number" min={0} value={form.stock}
+              <input type="number" value={form.stock}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
@@ -463,7 +463,7 @@ export default function ProductModal({
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Low Stock Threshold</label>
 
-              <input type="number" min={0} value={form.low_stock_threshold}
+              <input type="number" value={form.low_stock_threshold}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
