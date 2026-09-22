@@ -478,7 +478,7 @@ export default function NavBar({ isLoggedIn, categories }: NavBarProps) {
                 className="border-b border-black/[0.05] last:border-0"
               >
                 <div className="flex items-center justify-between">
-                  <Link
+                  <Link onClick={()=>setMenuOpen(false)}
                     href={`/shop?category=${category.slug}`}
                     className="flex-1 py-4 text-[14px] font-semibold tracking-wide text-brand-ink"
                   >
