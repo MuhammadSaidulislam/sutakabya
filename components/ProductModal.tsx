@@ -400,7 +400,7 @@ export default function ProductModal({
           </div>
 
           {/* Pricing */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Selling Price</label>
@@ -441,11 +441,23 @@ export default function ProductModal({
                 className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
               />
             </div>
+             <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink">Stock</label>
+              <input type="number" value={form.stock ?? ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    stock:  e.target.value === "" ? undefined : Number(e.target.value),
+                  }))
+                }
+                className="w-full rounded-xl border border-border bg-cream px-4 py-2.5"
+              />
+            </div>
 
           </div>
 
           {/* Inventory */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Stock</label>
@@ -460,7 +472,7 @@ export default function ProductModal({
               />
             </div>
 
-            <div>
+             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink">Low Stock Threshold</label>
 
               <input type="number" value={form.low_stock_threshold}
@@ -474,7 +486,7 @@ export default function ProductModal({
               />
             </div>
 
-          </div>
+          </div> */}
 
           {/* Product Flags */}
           <div className="flex flex-wrap gap-6">

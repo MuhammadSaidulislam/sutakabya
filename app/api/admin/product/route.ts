@@ -139,25 +139,25 @@ export async function POST(req: NextRequest) {
 
     // Duplicate Name
 
-    const existsResult = await client.query(
-      `SELECT id
-       FROM products
-       WHERE name = $1
-       LIMIT 1`,
-      [name]
-    );
+    // const existsResult = await client.query(
+    //   `SELECT id
+    //    FROM products
+    //    WHERE name = $1
+    //    LIMIT 1`,
+    //   [name]
+    // );
 
-    if (existsResult.rows.length > 0) {
-      await client.query("ROLLBACK");
+    // if (existsResult.rows.length > 0) {
+    //   await client.query("ROLLBACK");
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Product already exists.",
-        },
-        { status: 409 }
-      );
-    }
+    //   return NextResponse.json(
+    //     {
+    //       success: false,
+    //       message: "Product already exists.",
+    //     },
+    //     { status: 409 }
+    //   );
+    // }
 
     // Duplicate Slug
 
@@ -1182,30 +1182,30 @@ export async function PUT(req: NextRequest) {
     // =========================================================
     // Duplicate product name (except current product)
     // =========================================================
-    const existsResult = await client.query<ProductRow>(
-      `
-        SELECT id
-        FROM products
-        WHERE name = $1
-          AND id != $2
-        LIMIT 1
-      `,
-      [name, productId]
-    );
+    // const existsResult = await client.query<ProductRow>(
+    //   `
+    //     SELECT id
+    //     FROM products
+    //     WHERE name = $1
+    //       AND id != $2
+    //     LIMIT 1
+    //   `,
+    //   [name, productId]
+    // );
 
-    const exists = existsResult.rows;
+    // const exists = existsResult.rows;
 
-    if (exists.length) {
-      await client.query("ROLLBACK");
+    // if (exists.length) {
+    //   await client.query("ROLLBACK");
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Product already exists.",
-        },
-        { status: 409 }
-      );
-    }
+    //   return NextResponse.json(
+    //     {
+    //       success: false,
+    //       message: "Product already exists.",
+    //     },
+    //     { status: 409 }
+    //   );
+    // }
 
     // =========================================================
     // Update product
