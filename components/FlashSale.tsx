@@ -1,90 +1,186 @@
+
 'use client';
 
-import { Zap, ChevronRight } from 'lucide-react';
-import Reveal, { StaggerContainer, StaggerItem } from './Reveal';
-import ProductCard from './ProductCard';
-import { useState, useEffect } from 'react';
-import { ProductProps } from '@/types/product';
-interface FlashSaleProps {
-  products: ProductProps[];
-}
-// import useCountdown from './useCountdown';
-function useCountdown(days = 2, hours = 15, minutes = 22, seconds = 18) {
-    const initialMs =
-        ((days * 24 + hours) * 60 + minutes) * 60 * 1000 + seconds * 1000;
-    const [remaining, setRemaining] = useState(initialMs);
+import { useEffect, useState } from 'react';
+import { Flame, ArrowRight, Zap } from 'lucide-react';
+import Reveal from './Reveal';
+import Link from 'next/link'
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setRemaining((prev) => (prev > 1000 ? prev - 1000 : 0));
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
+const SALE_END_DATE = new Date('2026-09-30T23:59:59+06:00').getTime();
 
-    const totalSeconds = Math.floor(remaining / 1000);
-    return {
-        days: Math.floor(totalSeconds / (24 * 3600)),
-        hours: Math.floor((totalSeconds % (24 * 3600)) / 3600),
-        minutes: Math.floor((totalSeconds % 3600) / 60),
-        seconds: totalSeconds % 60,
+export default function FlashSale() {
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
+  const [expired, setExpired] = useState(false);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const difference = SALE_END_DATE - Date.now();
+
+      if (difference <= 0) {
+        setExpired(true);
+        return;
+      }
+
+      setTimeLeft({
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor(
+          (difference / (1000 * 60 * 60)) % 24
+        ),
+        minutes: Math.floor(
+          (difference / (1000 * 60)) % 60
+        ),
+        seconds: Math.floor(
+          (difference / 1000) % 60
+        ),
+      });
     };
-}
 
-function TimeBox({ value, label }: { value: number, label: string }) {
-    return (
-        <div className="flex flex-col items-center rounded-xl bg-brand-teal px-3 py-2 text-white sm:px-4 sm:py-2.5">
-            <span className="font-display text-lg font-bold leading-none sm:text-xl">
-                {String(value).padStart(2, '0')}
-            </span>
-            <span className="mt-1 text-[9px] uppercase tracking-wide text-white/70 sm:text-[10px]">
-                {label}
-            </span>
-        </div>
-    );
-}
+    updateCountdown();
 
-export default function FlashSale({  products}: FlashSaleProps) {
-    const { days, hours, minutes, seconds } = useCountdown(2, 15, 22, 18);
+    const interval = setInterval(updateCountdown, 1000);
 
-    return (
-        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            <Reveal direction="scale">
-                <div className="rounded-2xl bg-gradient-to-r from-brand-pink-light to-white p-5 shadow-card sm:p-7">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
-                        {/* Left: title + timer */}
-                        <div className="flex shrink-0 flex-col gap-3">
-                            <div className="flex items-center gap-2">
-                                <h2 className="font-display text-xl font-bold text-brand-ink sm:text-2xl">
-                                    Flash Sale
-                                </h2>
-                                <Zap size={20} className="text-brand-gold" fill="#F5A623" />
-                            </div>
-                            <p className="text-xs text-brand-muted sm:text-sm">
-                                Hurry up! Limited time offer
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <TimeBox value={days} label="Days" />
-                                <TimeBox value={hours} label="Hours" />
-                                <TimeBox value={minutes} label="Mins" />
-                                <TimeBox value={seconds} label="Secs" />
-                            </div>
-                            <button className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-brand-pink px-5 py-2.5 text-xs font-semibold text-white shadow-soft transition hover:bg-brand-rose sm:text-sm">
-                                Shop All Deals
-                                <ChevronRight size={14} />
-                            </button>
-                        </div>
+    return () => clearInterval(interval);
+  }, []);
 
-                        {/* Right: product grid */}
-                        <StaggerContainer className="grid flex-1 grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-                            {products.slice(0, 4).map((p, i) => (
-                                <StaggerItem key={p.name}>
-                                    <ProductCard product={p} index={i} />
-                                </StaggerItem>
-                            ))}
-                        </StaggerContainer>
-                    </div>
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 rounded-3xl bg-brand-teal">
+      <Reveal direction="up">
+        <div className="relative overflow-hidden rounded-3xl px-5 py-6 shadow-card sm:px-8 sm:py-7">
+          {/* Decorative glow */}
+          <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-rose/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-brand-teal/20 blur-3xl" />
+
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            {/* Sale information */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-pink text-white shadow-lg">
+                <Flame size={27} fill="currentColor" />
+
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand-pink">
+                  <Zap size={11} fill="currentColor" />
+                </span>
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-md font-bold uppercase tracking-[0.2em] text-white">
+                    Flash Sale
+                  </span>
+
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/70">
+                    Limited Time
+                  </span>
                 </div>
-            </Reveal>
-        </section>
-    );
+
+                <h2 className="font-display text-2xl font-bold text-white sm:text-3xl">
+                  Up to{' '}
+                  <span className="text-brand-rose">50% OFF</span>
+                </h2>
+
+                <p className="mt-1 text-xs text-brand-ink sm:text-sm">
+                  Grab your favorites before the sale disappears.
+                </p>
+              </div>
+            </div>
+
+            {/* Countdown */}
+            {!expired ? (
+              <div className="flex items-center gap-2 sm:gap-3">
+                <CountdownBox
+                  value={timeLeft.days}
+                  label="Days"
+                  highlight
+                />
+
+                <span className="pb-5 text-xl font-bold text-white/30">
+                  :
+                </span>
+
+                <CountdownBox
+                  value={timeLeft.hours}
+                  label="Hours"
+                  highlight
+                />
+
+                <span className="pb-5 text-xl font-bold text-white/30">
+                  :
+                </span>
+
+                <CountdownBox
+                  value={timeLeft.minutes}
+                  label="Min"
+                  highlight
+                />
+
+                <span className="pb-5 text-xl font-bold text-white/30">
+                  :
+                </span>
+
+                <CountdownBox
+                  value={timeLeft.seconds}
+                  label="Sec"
+                  highlight
+                />
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white/10 px-6 py-4 text-center">
+                <p className="text-sm font-bold uppercase tracking-wider text-brand-rose">
+                  Sale Ended
+                </p>
+              </div>
+            )}
+
+            {/* CTA */}
+            {!expired && (
+              <Link href="/collection?collection=flash-sale" type="button" className="group flex shrink-0 items-center justify-center gap-2 rounded-full bg-brand-pink px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg sm:px-7">
+                Shop All Deals
+                <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+              </Link>
+            )}
+          </div>
+
+          {/* Bottom urgency line */}
+          {!expired && (
+            <div className="relative mt-5 h-1 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-2/3 rounded-full bg-brand-rose" />
+            </div>
+          )}
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+function CountdownBox({
+  value,
+  label,
+  highlight = false,
+}: {
+  value: number;
+  label: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex min-w-[52px] flex-col items-center sm:min-w-[60px]">
+      <div
+        className={`flex h-12 w-full items-center justify-center rounded-xl border px-2 font-display text-xl font-bold sm:h-14 sm:text-2xl ${highlight
+            ? 'border-brand-rose/50 bg-brand-rose text-white'
+            : 'border-white/10 bg-white/10 text-white'
+          }`}
+      >
+        {value.toString().padStart(2, '0')}
+      </div>
+
+      <span className="mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-white">
+        {label}
+      </span>
+    </div>
+  );
 }

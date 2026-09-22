@@ -30,38 +30,35 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    tag: 'New Arrival',
-    titleTop: 'Tiny Moments,',
-    titleAccent: 'Big Smiles',
-    copy:
-      'Discover premium quality styles for your little ones & you.',
-    cta: 'Shop Collection',
-    href: '/collections/new-arrivals',
-    alt: 'Mother and children in matching pastel outfits',
+    tag: 'New Collection',
+    titleTop: 'Effortless Style,',
+    titleAccent: 'Everyday Elegance',
+    copy:  'Discover refined silhouettes and timeless pieces designed for your everyday wardrobe.',
+    cta: 'Shop New Arrivals',
+    href: '/collection?collection=new-arrival',
+    alt: 'Woman wearing an elegant new-season outfit',
     desktop: '/images/hero-pc-1.png',
     mobile: '/images/hero-mobile-1.jpeg',
   },
   {
     tag: 'Trending Now',
-    titleTop: 'Little Steps,',
-    titleAccent: 'Big Style',
-    copy:
-      'Matching family outfits made for picture-perfect memories.',
-    cta: 'Explore Looks',
-    href: '/collections/family-matching',
-    alt: 'Family wearing coordinated matching outfits',
+    titleTop: 'Own Your Look,',
+    titleAccent: 'Own Your Moment',
+    copy:   'Modern essentials and statement styles designed to express your confidence.',
+    cta: 'Explore Collection',
+    href: '/shop',
+    alt: 'Woman wearing a stylish contemporary outfit',
     desktop: '/images/hero-pc-2.png',
     mobile: '/images/hero-mobile-4.jpeg',
   },
   {
     tag: 'Season Edit',
-    titleTop: 'Soft Fabrics,',
-    titleAccent: 'Sweet Days',
-    copy:
-      'Organic cotton essentials for delicate, happy skin.',
-    cta: 'Shop Organic',
-    href: '/collections/organic',
-    alt: 'Baby dressed in soft organic cotton clothing',
+    titleTop: 'Designed For',
+    titleAccent: 'Everyday Elegance',
+    copy:  'Elevated fabrics, flattering fits, and effortless designs made for every occasion.',
+    cta: 'Best Collection',
+    href: '/collection?collection=best-seller',
+    alt: 'Woman wearing a sophisticated seasonal fashion outfit',
     desktop: '/images/hero-pc-3.png',
     mobile: '/images/hero-mobile-3.jpeg',
   },
@@ -506,16 +503,16 @@ export default function Hero() {
                 className="
                   mt-4
                   font-display
-                  text-4xl
+                  text-3xl
                   font-bold
                   leading-tight
                   text-white
                   drop-shadow-sm
 
                   sm:mt-5
-                  sm:text-5xl
+                  sm:text-4xl
 
-                  lg:text-6xl
+                  lg:text-5xl
                 "
               >
                 {slide.titleTop}
@@ -526,22 +523,7 @@ export default function Hero() {
                 </span>
               </h1>
 
-              {/* ====================================
-                  DESCRIPTION
-              ==================================== */}
-              <p
-                className="
-                  mt-3
-                  max-w-sm
-                  text-sm
-                  text-white/85
-
-                  sm:mt-4
-                  sm:text-base
-                "
-              >
-                {slide.copy}
-              </p>
+             
 
               {/* ====================================
                   CTA

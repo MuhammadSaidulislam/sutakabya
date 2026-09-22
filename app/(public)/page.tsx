@@ -2,26 +2,25 @@
 import Link from 'next/link'
 import Hero from '@/components/Hero'
 import ProductCard from '@/components/ProductCard'
-import EventShowcase from '@/components/EventShowcase'
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { ProductProps } from '@/types/product'
 import { useSearchParams } from 'next/navigation'
-import Categories from '@/components/Categories'
 import Carousel from "react-multi-carousel";
 import "react-multi-carousel/lib/styles.css";
 import { CustomLeftArrow, CustomRightArrow } from '@/components/Arrow'
 import Features from '@/components/Features'
 import FlashSale from '@/components/FlashSale'
-import CouponBanner from '@/components/CouponBanner'
+import Reveal from '@/components/Reveal'
+
 
 const responsive = {
   desktop: {
     breakpoint: { max: 3000, min: 1280 },
-    items: 5,
+    items: 6,
   },
   laptop: {
     breakpoint: { max: 1280, min: 1024 },
-    items: 5,
+    items: 6,
   },
   tablet: {
     breakpoint: { max: 1024, min: 640 },
@@ -46,7 +45,10 @@ export default function HomePage() {
 
   // Bestsellers / main product list
   const [products, setProducts] = useState<ProductProps[]>([]);
-  const [search, setSearch] = useState("");
+  const [bestSellingProducts, setBestSellingProducts] = useState<ProductProps[]>([]);
+  const [newArrivalProducts, setNewArrivalProducts] = useState<ProductProps[]>([]);
+  console.log("bestSellingProducts", bestSellingProducts);
+  console.log("newArrivalProducts", newArrivalProducts);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState(presetFilter ?? "All");
   const [loading, setLoading] = useState(false);
@@ -70,7 +72,7 @@ export default function HomePage() {
     const start = Date.now();
 
     try {
-      const res = await fetch(`/api/admin/product?page=${page}&limit=${limit}&search=${search}&category=${categoryFilter}&status=${statusFilter}`);
+      const res = await fetch(`/api/admin/product?page=${page}&limit=${limit}`);
       const result = await res.json();
 
       if (result.success) {
@@ -89,13 +91,43 @@ export default function HomePage() {
         setInitialLoading(false);
       }, delay);
     }
-  }, [page, limit, search, categoryFilter, statusFilter]);
+  }, [page, limit, categoryFilter, statusFilter]);
 
   useEffect(() => {
     startTransition(() => {
       fetchProducts();
     });
   }, [fetchProducts]);
+
+  const fetchHomeProducts = useCallback(async () => {
+    try {
+      const [bestSellingRes, newArrivalRes] = await Promise.all([
+        fetch('/api/admin/product?collection=best-seller&limit=10'),
+        fetch('/api/admin/product?collection=new-arrival&limit=10'),
+      ]);
+
+      const [bestSellingResult, newArrivalResult] = await Promise.all([
+        bestSellingRes.json(),
+        newArrivalRes.json(),
+      ]);
+
+      if (bestSellingResult.success) {
+        setBestSellingProducts(bestSellingResult.data);
+      }
+
+      if (newArrivalResult.success) {
+        setNewArrivalProducts(newArrivalResult.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch home products:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    startTransition(() => {
+      fetchHomeProducts();
+    });
+  }, [fetchHomeProducts]);
 
   // Fetch category list
   const fetchCategories = useCallback(async () => {
@@ -147,43 +179,74 @@ export default function HomePage() {
     <>
       <Hero />
       <Features />
-      <FlashSale products={products} />
-      {/* <Categories /> */}
-      {/* <CouponBanner /> */}
+      <FlashSale />
+      {/* Best Sellers */}
+      {bestSellingProducts.length > 0 && <section className="relative overflow-hidden bg-[#fff8f8] py-14 sm:py-20">
+        {/* Decorative background */}
+        <div className="pointer-events-none absolute -left-24 top-20 h-64 w-64 rounded-full bg-rose-200/20 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-red-200/20 blur-3xl" />
 
-      {/* Bestsellers */}
-      {/* <section className="mx-auto max-w-7xl px-5 sm:px-8 py-12">
-        <div className="flex items-center justify-center flex-col  mb-8">
-          <p className="font-serif text-3xl sm:text-4xl text-ink-900">Browse By</p>
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <div className="h-[2px] w-10 bg-gradient-to-r from-red-500 to-transparent" />
-            <span className="whitespace-nowrap  text-xl sm:text-3xl  font-semibold uppercase tracking-[0.1em] text-rose-danger">
-              Curated Collections
-            </span>
-            <div className="h-[2px] w-10 bg-gradient-to-l from-red-500 to-transparent" />
+        <div className="relative mx-auto max-w-7xl px-5 sm:px-8">
+          {/* Section Header */}
+          <div className="mb-10 text-center sm:mb-12">
+            {/* Eyebrow */}
+            <div className="mb-3 flex items-center justify-center gap-3">
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-rose-400 sm:w-12" />
+
+              <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-rose-500 sm:text-xs">
+                Loved by our customers
+              </span>
+
+              <span className="h-px w-8 bg-gradient-to-l from-transparent to-rose-400 sm:w-12" />
+            </div>
+
+            {/* Main Heading */}
+            <div className="flex items-center justify-center gap-3">
+              <span className="hidden text-rose-300 sm:block">✦</span>
+
+              <h2 className="font-serif text-3xl font-medium tracking-tight text-ink-900 sm:text-4xl lg:text-5xl">Best Selling Products</h2>
+
+              <span className="hidden text-rose-300 sm:block">✦</span>
+            </div>
+
+
+            {/* Shop All */}
+            <div className="mt-5">
+              <Link
+                href="/collection?collection=best-seller"
+                className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-600 transition-colors hover:text-rose-800"
+              >
+                Shop Best Selling
+                <span className="transition-transform duration-300 group-hover:translate-x-1">
+                  →
+                </span>
+              </Link>
+            </div>
           </div>
-          <div>
-            <p className="text-coral-500 text-xs tracking-[0.2em] uppercase mb-2 mt-3"> Discover the latest trends with our handpicked luxury selections.</p>
+
+          {/* Products */}
+          <div className="relative">
+            <Carousel
+              responsive={responsive}
+              customLeftArrow={<CustomLeftArrow />}
+              customRightArrow={<CustomRightArrow />}
+              infinite
+              keyBoardControl
+              itemClass="px-2 sm:px-3"
+              containerClass="-mx-2 sm:-mx-3"
+            >
+              {bestSellingProducts.map((p, i) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  index={i}
+                />
+              ))}
+            </Carousel>
           </div>
+
         </div>
-
-        <Carousel
-          responsive={responsive}
-          customLeftArrow={<CustomLeftArrow />}
-          customRightArrow={<CustomRightArrow />}
-          infinite
-          keyBoardControl
-          itemClass="px-2"
-        >
-          {products.map((p, i) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              index={i}
-            />
-          ))}
-        </Carousel>
-      </section> */}
+      </section>}
 
       {/* Category-wise sections (Shoe, Skincare, Assets, Diapers, ...) */}
       {categories && categories.map((cat) => {
@@ -270,7 +333,95 @@ export default function HomePage() {
         );
       })}
 
-      <EventShowcase />
+      {/* New Arrivals */}
+      {newArrivalProducts.length &&
+        <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <Reveal direction="scale">
+            <div className="relative overflow-hidden rounded-3xl bg-[#fff8f8] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
+              {/* Decorative background */}
+              <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-rose-200/20 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-pink-200/20 blur-3xl" />
+
+              {/* Header */}
+              <div className="relative mb-7 flex items-end justify-between  pb-5">
+                <div>
+                  {/* Eyebrow */}
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="h-px w-7 bg-[#c98b8b]" />
+
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#b47777]">
+                      Just Arrived
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h2 className="font-serif text-2xl font-medium tracking-[-0.02em] text-[#262323] sm:text-3xl lg:text-[34px]">
+                    New Arrivals
+                  </h2>
+
+                  {/* Description */}
+                  <p className="mt-1.5 text-xs text-neutral-500 sm:text-sm">
+                    Fresh styles, thoughtfully chosen for every little moment.
+                  </p>
+                </div>
+
+                {/* Desktop View All */}
+                <Link
+                  href="/collection?collection=new-arrival"
+                  className="group mb-1 hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#393333] sm:flex"
+                >
+                  <span className="border-b border-[#393333] pb-1 transition-all duration-300 group-hover:border-[#b47777] group-hover:text-[#b47777]">
+                    View All
+                  </span>
+
+                  <span className="text-sm transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                  </span>
+                </Link>
+              </div>
+
+              {/* Product Grid */}
+              <div className="relative">
+                <Carousel
+                  responsive={responsive}
+                  customLeftArrow={<CustomLeftArrow />}
+                  customRightArrow={<CustomRightArrow />}
+                  infinite
+                  keyBoardControl
+                  itemClass="px-2"
+                  containerClass="pb-2"
+                >
+                  {newArrivalProducts.map((p, i) => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      index={i}
+                    />
+                  ))}
+                </Carousel>
+              </div>
+
+              {/* Mobile View All */}
+              <div className="mt-7 flex justify-center sm:hidden">
+                <Link
+                  href="/collection?collection=new-arrival"
+                  className="group inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#393333]"
+                >
+                  <span className="border-b border-[#393333] pb-1 transition-all duration-300 group-hover:border-[#b47777] group-hover:text-[#b47777]">
+                    View All New Arrivals
+                  </span>
+
+                  <span className="transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                  </span>
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+      }
+
+
     </>
   )
 }
