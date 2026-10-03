@@ -91,7 +91,10 @@ export default function ProductConfigurator({ product }: { product: ProductProps
         <p className="text-sm text-ink-400 font-medium mb-6">Currently out of stock in all sizes</p>
       )}
       {totalAvailable > 8 && <div className="mb-6" />} */}
-
+ {/* Description */}
+      {product.short_description && (
+        <p className="text-sm text-ink-400 font-medium mb-6">{product.short_description}</p>
+      )}
       {/* Color */}
       {availableVariants && availableVariants.length > 0 &&
         <div className="mb-6">

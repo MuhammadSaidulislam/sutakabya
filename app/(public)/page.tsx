@@ -179,7 +179,7 @@ export default function HomePage() {
     <>
       <Hero />
       <Features />
-      <FlashSale />
+      {/* <FlashSale /> */}
       {/* Best Sellers */}
       {bestSellingProducts.length > 0 && <section className="relative overflow-hidden bg-[#fff8f8] py-14 sm:py-20">
         {/* Decorative background */}
