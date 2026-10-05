@@ -150,7 +150,7 @@ export const generateInvoicePDF = ({
   doc.setTextColor(...COLOR_INK);
 
   doc.text(
-    "MomAndChild",
+    "Sutakabya",
     margin,
     56
   );
@@ -694,7 +694,7 @@ export const generateInvoicePDF = ({
     );
 
     doc.text(
-      "Thank you for shopping with MomAndChild!",
+      "Thank you for shopping with Sutakabya!",
       pageWidth / 2,
       footerTopY + 28,
       {

@@ -62,7 +62,7 @@ const Page = () => {
 
   return (
     <div>
-      <PageHeader title="Welcome back, Admin 👋" description={`Here's how MomAndChild is performing today, ${new Date().toLocaleDateString("en-US",  { month: "long",   day: "numeric",    year: "numeric",  }  )}.`} />
+      <PageHeader title="Welcome back, Admin 👋" description={`Here's how Sutakabya is performing today, ${new Date().toLocaleDateString("en-US",  { month: "long",   day: "numeric",    year: "numeric",  }  )}.`} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

@@ -112,7 +112,7 @@ export default function InvoiceModal({
 
             <div>
               <p className="font-display text-[17px] font-semibold text-ink">
-                MomAndChild
+                Sutakabya
               </p>
 
               <p className="mt-1 text-[12.5px] leading-relaxed text-ink-soft">
@@ -326,7 +326,7 @@ export default function InvoiceModal({
           <div className="mt-5 border-t border-border pt-4 text-center">
 
             <p className="text-[12px] font-medium text-ink-soft">
-              Thank you for shopping with MomAndChild!
+              Thank you for shopping with Sutakabya!
             </p>
 
             <p className="mt-1 text-[11px] text-ink-soft/70">

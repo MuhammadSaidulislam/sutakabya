@@ -642,7 +642,7 @@ const OrderInvoice = ({ selectedOrder, onClose }: OrderProps) => {
         <div className="mt-5 border-t border-border pt-4 text-center">
 
           <p className="text-[12px] font-medium text-ink-soft">
-            Thank you for shopping with MomAndChild!
+            Thank you for shopping with Sutakabya!
           </p>
 
           <p className="mt-1 text-[11px] text-ink-soft/70">

@@ -984,7 +984,7 @@ const calculatedTotal = calculatedSubtotal + Number(shippingRate) -  Number(disc
 
           <p className="text-xs text-ink-soft">
             Thank you for shopping with
-            MomAndChild!
+            Sutakabya!
           </p>
 
           <p className="mt-1 text-[10px] text-ink-soft/70">

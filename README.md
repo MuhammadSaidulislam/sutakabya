@@ -1,6 +1,6 @@
-# MomAndChild Admin Dashboard
+# Sutakabya Admin Dashboard
 
-A responsive admin dashboard for the MomAndChild baby & maternity e-commerce store, built with Next.js (App Router), TypeScript, Tailwind CSS v4, and Recharts.
+A responsive admin dashboard for the Sutakabya baby & maternity e-commerce store, built with Next.js (App Router), TypeScript, Tailwind CSS v4, and Recharts.
 
 ## Features
 

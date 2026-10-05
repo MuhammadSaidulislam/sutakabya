@@ -14,7 +14,7 @@ export default function SettingsPage() {
 
   const [saved, setSaved] = useState(false);
 
-  const [storeName, setStoreName] = useState("MomAndChild");
+  const [storeName, setStoreName] = useState("Sutakabya");
   const [supportEmail, setSupportEmail] = useState(
     "care@momandchild.com"
   );

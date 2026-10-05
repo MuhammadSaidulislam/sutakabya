@@ -141,15 +141,15 @@ export default function Page() {
               </button>
             </form>
 
-            <div className="mt-5 rounded-xl bg-cream px-3.5 py-3 text-[12.5px] text-ink-soft">
+            {/* <div className="mt-5 rounded-xl bg-cream px-3.5 py-3 text-[12.5px] text-ink-soft">
               <p className="font-semibold text-ink">Demo credentials</p>
               <p className="mt-0.5">Email: {DEMO_EMAIL}</p>
               <p>Password: {DEMO_PASSWORD}</p>
-            </div>
+            </div> */}
           </div>
 
           <p className="mt-6 text-center text-[12.5px] text-ink-soft">
-            © {new Date().getFullYear()} MomAndChild. All rights reserved.
+            © {new Date().getFullYear()} Sutakabya. All rights reserved.
           </p>
         </div>
       </div>
